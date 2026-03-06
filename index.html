@@ -701,7 +701,20 @@ body::after{content:'';position:fixed;inset:0;z-index:0;background:radial-gradie
 
 </head>
 <body>
+<script>
+// Age gate — standalone, no dependencies, runs immediately
+window.confirmAge = function() {
+  var ag = document.getElementById('age-gate');
+  if (ag) ag.style.display = 'none';
+  try { localStorage.setItem('sah_age', 'ok'); } catch(e) {}
+};
+window.declineAge = function() {
+  document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;color:#666;font-family:sans-serif;text-align:center;padding:20px"><div><div style="font-size:3rem;margin-bottom:12px">🔞</div>You must be 18 or older.</div></div>';
+};
+</script>
+
 <!-- AGE GATE -->
+
 <div id="age-gate">
   <div class="ag-card">
     <div class="ag-logo">⚡<span>SATS</span>HUB</div>
@@ -1605,8 +1618,8 @@ function buildFeed(){const all=[…extraFeed,…BASE_FEED];const d=[…all,…al
 function addFeedWin(g,n){extraFeed.unshift({u:‘You’,g,a:’+’+n});if(extraFeed.length>4)extraFeed.pop();buildFeed();}
 
 /* AGE GATE */
-function confirmAge(){document.getElementById(‘age-gate’).classList.add(‘hidden’);try{localStorage.setItem(‘sah_age’,‘ok’);}catch(e){}}
-function declineAge(){document.body.innerHTML=’<div style="display:flex;align-items:center;justify-content:center;height:100vh;color:#4A4465;font-family:sans-serif;text-align:center;padding:20px;"><div><div style="font-size:3rem;margin-bottom:12px">🔞</div>You must be 18 or older to access this platform.</div></div>’;}
+/* confirmAge defined in early script above */
+/* declineAge defined in early script above */
 /* age check moved to DOMContentLoaded */
 
 /* JACKPOT */
@@ -1873,7 +1886,7 @@ if(ps)ps.addEventListener(‘click’,function(e){if(e.target===this)closeProfil
 try{
 if(localStorage.getItem(‘sah_age’)===‘ok’){
 const ag=document.getElementById(‘age-gate’);
-if(ag)ag.classList.add(‘hidden’);
+if(ag)ag.style.display=‘none’;
 }
 }catch(e){}
 });
