@@ -1496,18 +1496,25 @@ window.declineAge = function() {
   </div>
 </div>
 <script>
-'use strict';
+document.addEventListener('DOMContentLoaded',function(){
+  // Always start the game engine immediately — age gate is just a visual overlay
+  startSystems();
+  buildFeed();syncAll();renderStreakHub();renderRedeemHist();
+  updateLevel(false);refreshAvatarUI();
+  var ps=document.getElementById('profile-sheet');
+  if(ps)ps.addEventListener('click',function(e){if(e.target===this)closeProfile();});
+
 /* ═══════════════════════════════════════════════════════════
-   STATE
-   COINS = entertainment only (no real value, can buy/earn)
-   SATS  = real Bitcoin rewards, earned FREE via loyalty ONLY
-   ═══════════════════════════════════════════════════════════ */
+STATE
+COINS = entertainment only (no real value, can buy/earn)
+SATS  = real Bitcoin rewards, earned FREE via loyalty ONLY
+═══════════════════════════════════════════════════════════ */
 let COINS=1000, SATS=0, JACKPOT=1247;
-let STREAK=0, LAST_CLAIM='', CLAIMED_TODAY=false;
+let STREAK=0, LAST_CLAIM=’’, CLAIMED_TODAY=false;
 let WEEKLY_CLAIMS={}, MONTHLY_CLAIMS={};
 let SESSION_START=Date.now(), SESSION_MINS=0;
 let TIME_CLAIMED={30:false,60:false,120:false,240:false};
-let AD_WATCH_NEXT=0, REDEEM_HIST=[], DAILY_REDEEMED=0, DAILY_REDEEM_DATE="";
+let AD_WATCH_NEXT=0, REDEEM_HIST=[], DAILY_REDEEMED=0, DAILY_REDEEM_DATE=””;
 const AD_INTERVALS=[3*60000,5*60000];
 let adIdx=0, adSkipTimer=null;
 
@@ -1549,9 +1556,18 @@ loadState();
 
 /* COINS ONLY operations */
 function spendCoins(n){if(COINS<n){hubToast(‘Need more coins! 🛒’);openShop();return false;}COINS-=n;syncAll();saveState();return true;}
-let earnCoins=function(n,label){COINS+=n;syncAll();saveState();if(label)addFeedWin(label,n);if(Math.random()<.012)setTimeout(triggerJackpot,800);};
+function earnCoins(n,label){
+COINS+=n;syncAll();saveState();if(label)addFeedWin(label,n);if(Math.random()<.012)setTimeout(triggerJackpot,800);
+LIFETIME_COINS+=n;
+const _gameSrc=[‘Plinko’,‘Wheel’,‘Coin Flip’,‘Dice’,‘HiLo’,‘Keno’,‘Crash’,‘Mines’,‘Memory’,‘Reaction’,‘Snake’,‘Brick’,‘Flappy’,‘Whack’,‘SatSlots’];
+if(label&&_gameSrc.some(function(s){return label.includes(s);})){
+GAMES_PLAYED++;saveProfileState();updateLevel(true);
+var _roll=Math.random(),_thr=n>=100?0.18:n>=50?0.10:n>=20?0.06:0.04;
+if(_roll<_thr){var _sa=n>=200?3:n>=100?2:1;setTimeout(function(){earnSats(_sa);showSatDrop(_sa,label);},600);}
+}
+}
 /* SATS ONLY operations - earned free via loyalty */
-let earnSats=function(n){SATS+=n;syncAll();saveState();showRewardsDot();};
+function earnSats(n){SATS+=n;syncAll();saveState();showRewardsDot();LIFETIME_SATS+=n;try{saveProfileState();}catch(e){}}
 function showRewardsDot(){document.getElementById(‘bn-rewards-dot’).classList.add(‘show’);setTimeout(()=>document.getElementById(‘bn-rewards-dot’).classList.remove(‘show’),6000);}
 
 /* SYNC ALL UI */
@@ -1875,13 +1891,6 @@ renderTimeTiers();
 setInterval(()=>{JACKPOT+=Math.floor(Math.random()*3)+1;if(JACKPOT>99999)JACKPOT=500;document.getElementById(‘global-jackpot’).textContent=JACKPOT.toLocaleString();},4000);
 }
 // DOM init - deferred
-document.addEventListener(‘DOMContentLoaded’,function(){
-// Always start the game engine immediately — age gate is just a visual overlay
-startSystems();
-buildFeed();syncAll();renderStreakHub();renderRedeemHist();
-updateLevel(false);refreshAvatarUI();
-var ps=document.getElementById(‘profile-sheet’);
-if(ps)ps.addEventListener(‘click’,function(e){if(e.target===this)closeProfile();});
 // Hide age gate if already confirmed
 try{
 if(localStorage.getItem(‘sah_age’)===‘ok’){
@@ -2189,32 +2198,7 @@ const v=document.getElementById(‘ps-name-input’).value.trim();
 if(v){PLAYER_NAME=v;saveProfileState();document.getElementById(‘ps-name-display’).textContent=v;}
 document.getElementById(‘ps-name-input-wrap’).classList.remove(‘show’);
 }
-/* Wrap earnCoins to track games + lifetime + random sat drops */
-const _oEC=earnCoins;
-earnCoins=function(n,label){
-_oEC(n,label);
-LIFETIME_COINS+=n;
-const gameSrc=[‘Plinko’,‘Wheel’,‘Coin Flip’,‘Dice’,‘HiLo’,‘Keno’,‘Crash’,‘Mines’,‘Memory’,‘Reaction’,‘Snake’,‘Brick’,‘Flappy’,‘Whack’,‘SatSlots’];
-const isGame=label&&gameSrc.some(s=>label.includes(s));
-if(isGame){
-GAMES_PLAYED++;
-saveProfileState();
-updateLevel(true);
-// Random sat drops — small chance on any game win
-// Bigger wins = slightly better odds
-const roll=Math.random();
-const threshold=n>=100?0.18:n>=50?0.10:n>=20?0.06:0.04;
-if(roll<threshold){
-const satAmt=n>=200?3:n>=100?2:1;
-setTimeout(()=>{
-earnSats(satAmt);
-showSatDrop(satAmt,label);
-},600);
-}
-}
-};
-const _oES=earnSats;
-earnSats=function(n){_oES(n);LIFETIME_SATS+=n;saveProfileState();};
+/* earnCoins/earnSats tracking merged into declarations above */
 
 function showSatDrop(n,game){
 // reuse hub toast with special styling
