@@ -4878,8 +4878,21 @@ function debouncedSyncToServer(){
 }
 async function authSignOut(){
   const sb=getSupabase();if(!sb)return;
-  await syncToServer();await sb.auth.signOut();
-  _authUser=null;updateAccountBtn(false);hubToast('Signed out');
+  await syncToServer();
+  await sb.auth.signOut();
+  _authUser=null;
+  // Reset all game state to defaults so next account loads clean
+  COINS=1000;SATS=0;JACKPOT=1247;
+  STREAK=0;LAST_CLAIM='';CLAIMED_TODAY=false;
+  WEEKLY_CLAIMS={};MONTHLY_CLAIMS={};
+  TIME_CLAIMED={30:false,60:false,120:false,240:false};
+  AD_WATCH_NEXT=0;REDEEM_HIST=[];DAILY_REDEEMED=0;DAILY_REDEEM_DATE='';
+  PLAYER_NAME='Player One';PLAYER_AVATAR='🎮';PLAYER_AVATAR_IMG='';
+  GAMES_PLAYED=0;LIFETIME_COINS=0;LIFETIME_SATS=0;PLAYER_LEVEL=1;PLAYER_XP=0;
+  // Clear localStorage so guest state doesn't bleed in
+  try{localStorage.removeItem('sah_v5');localStorage.removeItem('sah_profile');}catch(e){}
+  syncAll();refreshAvatarUI();updateLevel(false);
+  updateAccountBtn(false);hubToast('Signed out');
 }
 async function authInit(){
   const sb=getSupabase();if(!sb)return;
