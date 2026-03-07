@@ -214,7 +214,7 @@ body::after{content:'';position:fixed;inset:0;z-index:0;background:radial-gradie
 .p-mseg{padding:3px 6px;border:none;background:transparent;font-family:'Audiowide',monospace;font-size:.36rem;cursor:pointer;color:rgba(255,255,255,.4);text-transform:uppercase;}
 .p-mseg.on-n{background:linear-gradient(135deg,#2ecc71,#1a8c4e);color:#fff}
 .p-mseg.on-m2{background:linear-gradient(135deg,#f7931a,#ffb347);color:#1a0d00}.p-mseg.on-m3{background:linear-gradient(135deg,#e63946,#ff6b6b);color:#fff}.p-mseg.on-m4{background:linear-gradient(135deg,#a855f7,#c084fc);color:#fff}
-.plinko-game-area{flex:1;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;min-height:0;max-height:calc(100vh - 240px);}
+.plinko-game-area{flex:1;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;min-height:260px;max-height:calc(100vh - 240px);}
 .machine-frame{background:linear-gradient(180deg,#6b3a14,#3b1e08);border:3px solid #3b1e08;border-radius:7px 7px 2px 2px;padding:3px;box-shadow:0 0 0 2px #d4af37,0 0 18px rgba(212,175,55,.22),0 8px 20px rgba(0,0,0,.7);flex-shrink:0;}
 .plinko-wrap.cm .machine-frame{box-shadow:0 0 0 2px #f7931a,0 0 22px rgba(247,147,26,.38),0 8px 20px rgba(0,0,0,.7)}
 #plinko-canvas{display:block;border-radius:2px}
@@ -2159,7 +2159,7 @@ function loadState(){
   }catch(e){}
 }
 function saveState(){
-  debouncedSyncToServer();
+  try{if(typeof debouncedSyncToServer==='function')debouncedSyncToServer();}catch(e){}
   try{localStorage.setItem('sah_v5',JSON.stringify({
     c:COINS,s:SATS,j:JACKPOT,st:STREAK,lc:LAST_CLAIM,ct:CLAIMED_TODAY,
     wc:WEEKLY_CLAIMS,mc:MONTHLY_CLAIMS,tc:TIME_CLAIMED,awn:AD_WATCH_NEXT,rh:REDEEM_HIST,dr:DAILY_REDEEMED,drd:DAILY_REDEEM_DATE
@@ -2213,7 +2213,7 @@ function navTo(s){
   document.getElementById('screen-'+s).classList.add('active');
   ['hub','rewards','redeem','legal'].forEach(id=>{const b=document.getElementById('bn-'+id);if(b)b.classList.toggle('active',id===s);});
   if(s==='rewards'){renderStreakRewards();renderWeeklyMiles();renderMonthlyMiles();renderTimeTiers();}
-  if(s==='plinko')pInit();
+  if(s==='plinko')setTimeout(pInit,60);
   if(s==='slots'){sInitGrid();sBuildPaytable();}
   if(s==='arcade')aDrawWheel();
   if(s==='redeem')renderRedeemHist();
@@ -2225,7 +2225,7 @@ function openGame(g,sub){
   document.getElementById('screen-'+g).classList.add('active');
   document.querySelectorAll('.bn').forEach(b=>b.classList.remove('active'));
   if(g==='arcade'){aDrawWheel();aSwitch(sub||'wheel');}
-  if(g==='plinko')pInit();
+  if(g==='plinko')setTimeout(pInit,60);
   if(g==='slots'){sInitGrid();sBuildPaytable();}
   if(g==='scratch')scInit();
   if(g==='blackjack'){if(bjDeck.length<15)bjDeck=bjBuildDeck();}
@@ -2537,8 +2537,31 @@ let pCan,pCtx,pW,pH,pPegs=[],pActiveBalls=[],pParticles=[],pRAF=null,pInited=fal
 const PN=[{l:'💀',m:0,c:'#2a2a2a'},{l:'2×',m:2,c:'#6b1a1a'},{l:'5×',m:5,c:'#6b3500'},{l:'💎',m:10,c:'#3a1a6b'},{l:'🎰',m:50,c:'#4a3a00'},{l:'💎',m:10,c:'#3a1a6b'},{l:'5×',m:5,c:'#6b3500'},{l:'2×',m:2,c:'#6b1a1a'},{l:'💀',m:0,c:'#2a2a2a'}];
 const PC=[{l:'💀',m:0,c:'#1a1a1a'},{l:'½×',m:.5,c:'#2a2a2a'},{l:'1×',m:1,c:'#3a2a00'},{l:'2×',m:2,c:'#3a1a6b'},{l:'3×',m:3,c:'#5a3000'},{l:'2×',m:2,c:'#3a1a6b'},{l:'1×',m:1,c:'#3a2a00'},{l:'½×',m:.5,c:'#2a2a2a'},{l:'💀',m:0,c:'#1a1a1a'}];
 const pBkts=()=>PN;
-function pInit(){if(pInited&&pRAF)return;pInited=true;pCan=document.getElementById('plinko-canvas');pCtx=pCan.getContext('2d');pSizeCanvas();pBuildBuckets();pUpdateUI();pUpdateDrop();if(!pRAF)pLoop();}
-function pSizeCanvas(){const area=document.getElementById('plinko-area');const r=area.getBoundingClientRect();const mw=Math.min(r.width-12,320),mh=r.height-22;let cw=mw,ch=Math.round(cw*(440/310));if(ch>mh){ch=mh;cw=Math.round(ch*(310/440));}pCan.width=Math.floor(cw);pCan.height=Math.floor(ch);pW=pCan.width;pH=pCan.height;pBuildPegs();}
+function pInit(){
+  pCan=document.getElementById('plinko-canvas');
+  if(!pCan)return;
+  pCtx=pCan.getContext('2d');
+  pSizeCanvas();
+  // If canvas still has no size, retry after another frame
+  if(!pW||!pH){setTimeout(pInit,100);return;}
+  pBuildBuckets();pUpdateUI();pUpdateDrop();
+  if(!pRAF)pLoop();
+  pInited=true;
+}
+function pSizeCanvas(){
+  const area=document.getElementById('plinko-area');
+  const r=area?area.getBoundingClientRect():{width:0,height:0};
+  // Fallback to safe fixed size if layout not ready
+  const aw=r.width>20?r.width:Math.min(window.innerWidth-20,360);
+  const ah=r.height>50?r.height:Math.min(window.innerHeight-240,480);
+  const mw=Math.min(aw-12,320),mh=ah-22;
+  let cw=mw,ch=Math.round(cw*(440/310));
+  if(ch>mh){ch=mh;cw=Math.round(ch*(310/440));}
+  // Clamp to sensible minimum
+  cw=Math.max(cw,200);ch=Math.max(ch,280);
+  pCan.width=Math.floor(cw);pCan.height=Math.floor(ch);
+  pW=pCan.width;pH=pCan.height;pBuildPegs();
+}
 function pBuildPegs(){pPegs=[];const R=Math.max(3,Math.round(pW*.013)),sy=pH*.1,rh=(pH-sy-pH*.16)/10;for(let row=0;row<10;row++){const cols=5+row,rw=pW/(cols+1);for(let col=0;col<cols;col++)pPegs.push({x:rw*(col+1),y:sy+row*rh,r:R,hit:0});}}
 function pBuildBuckets(){const row=document.getElementById('plinko-buckets');row.innerHTML='';pBkts().forEach((b,i)=>{const el=document.createElement('div');el.className='bucket-cell';el.id='pb'+i;el.textContent=b.l;el.style.background=b.c;row.appendChild(el);});}
 class PBall{constructor(x){this.x=x;this.y=pH*.04;this.vx=(Math.random()-.5)*.9;this.vy=2;this.r=Math.max(5,Math.round(pW*.022));this.done=false;this.trail=[];this.color=`hsl(${Math.random()*360},90%,60%)`;this.bi=-1;}
