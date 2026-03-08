@@ -2588,10 +2588,12 @@ function startSystems(){
 /* DOM ready handler is at the bottom of this script */
 /* === PLINKO === */
 const PLINKO={balls:5,score:0,multi:1,activeDrops:0,history:[],bonusActive:false,bonusTotal:0,bonusPicks:0,roundTotal:0,roundBest:0};
-const PN_B=[{l:'\u{1F480}',m:0,c:'#1a0a0a'},{l:'2x',m:2,c:'#6b1a1a'},{l:'5x',m:5,c:'#6b3500'},{l:'10x',m:10,c:'#3a1a6b'},{l:'50x',m:50,c:'#8a6a00'},{l:'10x',m:10,c:'#3a1a6b'},{l:'5x',m:5,c:'#6b3500'},{l:'2x',m:2,c:'#6b1a1a'},{l:'\u{1F480}',m:0,c:'#1a0a0a'}];
+const PN_B=[{l:'9x',m:9,c:'#3a1a6b'},{l:'3x',m:3,c:'#6b3500'},{l:'1.5x',m:1.5,c:'#6b1a1a'},{l:'\u{1F480}',m:0,c:'#1a0a0a'},{l:'25x',m:25,c:'#8a6a00'},{l:'\u{1F480}',m:0,c:'#1a0a0a'},{l:'1.5x',m:1.5,c:'#6b1a1a'},{l:'3x',m:3,c:'#6b3500'},{l:'9x',m:9,c:'#3a1a6b'}];
 let _pCan,_pCtx,_pPegs=[],_pBalls=[],_pParticles=[],_pRaf=null;
 const _pW=260,_pH=380,_pBH=44;
 let _pDynW=260,_pDynH=380,_pDynBH=44;
+// Aim ball
+let _pAimX=130,_pAimDir=1,_pAimSpeed=2.2,_pAimR=7;
 
 function pInit(){
   if(_pRaf){cancelAnimationFrame(_pRaf);_pRaf=null;}
@@ -2607,6 +2609,7 @@ function pInit(){
   _pDynW=w; _pDynH=h; _pDynBH=Math.round(h*0.115);
   PLINKO.activeDrops=0;PLINKO.roundTotal=0;PLINKO.roundBest=0;
   _pBalls=[];_pParticles=[];
+  _pAimX=w/2; _pAimDir=1; _pAimSpeed=w*0.0085; _pAimR=Math.max(5,Math.round(w*0.028));
   _pBuildPegs();
   _pUpdateUI();_pUpdateBtn();
   _pRaf=requestAnimationFrame(_pFrame);
@@ -2615,12 +2618,23 @@ function pInit(){
 function _pBuildPegs(){
   _pPegs=[];
   const W=_pDynW,H=_pDynH,BH=_pDynBH;
-  const sy=H*0.06,avail=H-sy-BH-10;
-  const rh=avail/10;
-  for(let row=0;row<10;row++){
-    const cols=5+row,rw=W/(cols+1);
-    for(let col=0;col<cols;col++)
-      _pPegs.push({x:rw*(col+1),y:sy+row*rh,r:Math.max(3,Math.round(W*0.014)),hit:0});
+  const cols=12,rows=16;
+  const pr=Math.max(3,Math.round(W*0.011));
+  const padX=W*0.055,padY=H*0.045;
+  const cellW=(W-padX*2)/(cols-1);
+  const cellH=(H-BH-padY*2)/rows;
+  for(let row=0;row<rows;row++){
+    for(let col=0;col<cols;col++){
+      // Offset every other row by half a cell (classic Galton board stagger)
+      const ox=(row%2===1)?cellW*0.5:0;
+      // Small random jitter so paths aren't perfectly predictable
+      const jx=(Math.random()-0.5)*cellW*0.22;
+      const jy=(Math.random()-0.5)*cellH*0.22;
+      const x=padX+col*cellW+ox+jx;
+      const y=padY+row*cellH+jy;
+      if(x>pr&&x<W-pr) // skip pegs that jittered off edge
+        _pPegs.push({x,y,r:pr,hit:0});
+    }
   }
 }
 
@@ -2682,12 +2696,32 @@ function _pFrame(){
     if(b.done){_pLand(b);_pBalls.splice(i,1);}
   }
 
-  // Drop target dot
+  // Aim ball: bounces left-right when idle, shows target bucket highlight
   if(PLINKO.activeDrops===0&&!PLINKO.bonusActive){
-    ctx.beginPath();
-    ctx.arc(_pDynW/2,12,5,0,Math.PI*2);
-    ctx.fillStyle='rgba(255,45,120,0.5)';
-    ctx.fill();
+    // Advance aim ball
+    _pAimX+=_pAimDir*_pAimSpeed;
+    if(_pAimX+_pAimR>=_pDynW){_pAimX=_pDynW-_pAimR;_pAimDir=-1;}
+    if(_pAimX-_pAimR<=0){_pAimX=_pAimR;_pAimDir=1;}
+    // Highlight target bucket
+    const aimBucket=Math.min(Math.floor(_pAimX/(_pDynW/PN_B.length)),PN_B.length-1);
+    const bw2=_pDynW/PN_B.length;
+    ctx.fillStyle='rgba(255,220,0,0.18)';
+    ctx.fillRect(aimBucket*bw2,_pDynH-_pDynBH,bw2,_pDynBH);
+    // Dashed drop line
+    ctx.setLineDash([4,4]);
+    ctx.strokeStyle='rgba(255,220,0,0.35)';
+    ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(_pAimX,_pAimR*2+2);ctx.lineTo(_pAimX,_pDynH-_pDynBH);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // Aim ball glow
+    ctx.beginPath();ctx.arc(_pAimX,_pAimR+2,_pAimR+4,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,45,120,0.18)';ctx.fill();
+    // Aim ball
+    const ag=ctx.createRadialGradient(_pAimX-_pAimR*0.3,_pAimR-_pAimR*0.3,1,_pAimX,_pAimR+2,_pAimR);
+    ag.addColorStop(0,'#fff');ag.addColorStop(0.4,'#ff2d78');ag.addColorStop(1,'rgba(0,0,0,0.5)');
+    ctx.beginPath();ctx.arc(_pAimX,_pAimR+2,_pAimR,0,Math.PI*2);
+    ctx.fillStyle=ag;ctx.fill();
   }
   ctx.textAlign='left';ctx.textBaseline='alphabetic';
 }
@@ -2769,10 +2803,11 @@ function pDrop(){
   PLINKO.roundTotal=0;PLINKO.roundBest=0;
   trackGame();
   _pUpdateBtn();
+  const dropX=_pAimX; // capture aim position at moment of drop
   for(let i=0;i<PLINKO.multi;i++){
-    const spread=(_pDynW*0.18)*(i-(PLINKO.multi-1)/2)/(Math.max(PLINKO.multi-1,1));
+    const spread=(PLINKO.multi>1)?(_pDynW*0.06)*(i-(PLINKO.multi-1)/2)/(Math.max(PLINKO.multi-1,1)):0;
     setTimeout(()=>{
-      _pBalls.push({x:_pDynW/2+spread+(Math.random()-0.5)*_pDynW*0.08,y:_pDynH*0.04,vx:(Math.random()-0.5)*0.9,vy:2,r:6,done:false,trail:[],bi:-1,color:'hsl('+(Math.random()*360)+',90%,60%)'});
+      _pBalls.push({x:dropX+spread+(Math.random()-0.5)*_pDynW*0.03,y:_pDynH*0.04,vx:(Math.random()-0.5)*0.5,vy:2,r:6,done:false,trail:[],bi:-1,color:'hsl('+(Math.random()*360)+',90%,60%)'});
     },i*120);
   }
 }
@@ -2877,7 +2912,7 @@ let aToastT;function aToast(m){const t=document.getElementById('a-toast');if(!t)
 function aResult(id,m,c){const el=document.getElementById(id);if(!el)return;el.textContent=m;el.className='a-result '+(c||'');}
 
 /* Wheel */
-const AW_SLICES=[{l:'0\u00D7',m:0,c:'#1a1a1a'},{l:'1.5\u00D7',m:1.5,c:'#2a1800'},{l:'0\u00D7',m:0,c:'#1a1a1a'},{l:'2\u00D7',m:2,c:'#3a2000'},{l:'0\u00D7',m:0,c:'#1a1a1a'},{l:'3\u00D7',m:3,c:'#8a4500'},{l:'0\u00D7',m:0,c:'#1a1a1a'},{l:'5\u00D7',m:5,c:'#a86000'}];
+const AW_SLICES=[{l:'0\u00D7',m:0,c:'#1a1a1a'},{l:'0\u00D7',m:0,c:'#1a1a1a'},{l:'1.5\u00D7',m:1.5,c:'#2a1800'},{l:'0\u00D7',m:0,c:'#1a1a1a'},{l:'2\u00D7',m:2,c:'#3a2000'},{l:'0\u00D7',m:0,c:'#1a1a1a'},{l:'0\u00D7',m:0,c:'#1a1a1a'},{l:'3.5\u00D7',m:3.5,c:'#a86000'}];
 let awAngle=0,awSpinning=false;
 function aDrawWheel(angle=0){const c=document.getElementById('a-wheel-canvas');if(!c)return;const ctx=c.getContext('2d'),W=c.width,H=c.height,cx=W/2,cy=H/2,r=cx-10,n=AW_SLICES.length,arc=Math.PI*2/n;ctx.clearRect(0,0,W,H);for(let i=0;i<n;i++){const s=angle+i*arc;ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,s,s+arc);ctx.fillStyle=AW_SLICES[i].c;ctx.fill();ctx.strokeStyle='#F7931A33';ctx.lineWidth=1.5;ctx.stroke();ctx.save();ctx.translate(cx,cy);ctx.rotate(s+arc/2);ctx.textAlign='right';ctx.fillStyle='#F0E6D3';ctx.font='bold 14px Bebas Neue,sans-serif';ctx.fillText(AW_SLICES[i].l,r-10,5);ctx.restore();}ctx.beginPath();ctx.arc(cx,cy,16,0,Math.PI*2);ctx.fillStyle='#F7931A';ctx.fill();ctx.beginPath();ctx.moveTo(cx+r+8,cy);ctx.lineTo(cx+r-8,cy-8);ctx.lineTo(cx+r-8,cy+8);ctx.fillStyle='#F7931A';ctx.fill();}
 function aSpinWheel(){if(awSpinning)return;if(!spendCoins(aWheelBet))return;aResult('a-wheel-result','','');awSpinning=true;document.getElementById('a-wheel-btn').disabled=true;const total=5*Math.PI*2+Math.random()*Math.PI*2,dur=3000,start=performance.now(),sa=awAngle;function tick(now){const t=Math.min((now-start)/dur,1),ease=1-Math.pow(1-t,4);awAngle=sa+total*ease;aDrawWheel(awAngle);if(t<1){requestAnimationFrame(tick);return;}awSpinning=false;document.getElementById('a-wheel-btn').disabled=false;const n=AW_SLICES.length,arc=Math.PI*2/n,norm=(((-awAngle)%(Math.PI*2))+Math.PI*2)%(Math.PI*2),idx=~~(norm/arc)%n,sl=AW_SLICES[idx];if(sl.m>0){const w=~~(aWheelBet*sl.m);earnCoins(w,'Wheel Spin');showWinPopup(w,'Wheel Spin','\u{1F3A1}');aResult('a-wheel-result',`\u{1F3A1} ${sl.l}  -  +${w} coins!`,'win');}else aResult('a-wheel-result','No luck this spin!','lose');}requestAnimationFrame(tick);}
@@ -2927,7 +2962,7 @@ function aDrawDie(canvasId,val,highlight){
 }
 function aInitDice(){aDrawDie('a-die1-cv',1,false);aDrawDie('a-die2-cv',1,false);}
 let aDiceRolling=false;
-function aRollDice(){if(aDiceRolling)return;if(!spendCoins(aDiceBet))return;aDiceRolling=true;aResult('a-dice-result','','');document.getElementById('a-dice-btn').disabled=true;document.getElementById('a-die1').classList.add('rolling');document.getElementById('a-die2').classList.add('rolling');let cnt=0;const iv=setInterval(()=>{aDrawDie('a-die1-cv',~~(Math.random()*6)+1,false);aDrawDie('a-die2-cv',~~(Math.random()*6)+1,false);cnt++;if(cnt>=12){clearInterval(iv);document.getElementById('a-die1').classList.remove('rolling');document.getElementById('a-die2').classList.remove('rolling');aDiceRolling=false;document.getElementById('a-dice-btn').disabled=false;const r1=~~(Math.random()*6)+1,r2=~~(Math.random()*6)+1;aDrawDie('a-die1-cv',r1,true);aDrawDie('a-die2-cv',r2,true);const sum=r1+r2;if(sum===7||sum===11){const dw1=~~(aDiceBet*3);earnCoins(dw1,'Dice');showWinPopup(dw1,'Dice Roll','\u{1F3B2}');aResult('a-dice-result',`${sum}! +${dw1} coins!`,'win');}else if(r1===r2){const dw2=~~(aDiceBet*2);earnCoins(dw2,'Dice');showWinPopup(dw2,'Dice Roll','\u{1F3B2}');aResult('a-dice-result',`Doubles! +${dw2} coins!`,'win');}else aResult('a-dice-result',`${r1}+${r2}=${sum}. No win.`,'lose');}},80);}
+function aRollDice(){if(aDiceRolling)return;if(!spendCoins(aDiceBet))return;aDiceRolling=true;aResult('a-dice-result','','');document.getElementById('a-dice-btn').disabled=true;document.getElementById('a-die1').classList.add('rolling');document.getElementById('a-die2').classList.add('rolling');let cnt=0;const iv=setInterval(()=>{aDrawDie('a-die1-cv',~~(Math.random()*6)+1,false);aDrawDie('a-die2-cv',~~(Math.random()*6)+1,false);cnt++;if(cnt>=12){clearInterval(iv);document.getElementById('a-die1').classList.remove('rolling');document.getElementById('a-die2').classList.remove('rolling');aDiceRolling=false;document.getElementById('a-dice-btn').disabled=false;const r1=~~(Math.random()*6)+1,r2=~~(Math.random()*6)+1;aDrawDie('a-die1-cv',r1,true);aDrawDie('a-die2-cv',r2,true);const sum=r1+r2;if(sum===7||sum===11){const dw1=~~(aDiceBet*2.5);earnCoins(dw1,'Dice');showWinPopup(dw1,'Dice Roll','\u{1F3B2}');aResult('a-dice-result',`${sum}! +${dw1} coins!`,'win');}else if(r1===r2){const dw2=~~(aDiceBet*2);earnCoins(dw2,'Dice');showWinPopup(dw2,'Dice Roll','\u{1F3B2}');aResult('a-dice-result',`Doubles! +${dw2} coins!`,'win');}else aResult('a-dice-result',`${r1}+${r2}=${sum}. No win.`,'lose');}},80);}
 
 /* HiLo */
 const AVALS=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
@@ -2960,14 +2995,14 @@ function aChangeBet(game,dir){
 
 let aHiLoCurrent=0,aHiLoActive=false;
 function aHiLoNewCard(){aHiLoCurrent=~~(Math.random()*13);const suit=ASUITS[~~(Math.random()*4)];document.getElementById('a-hilo-val').textContent=AVALS[aHiLoCurrent];document.getElementById('a-hilo-suit').textContent=suit;document.getElementById('a-hilo-card').className='a-card-display'+(ARED[suit]?' a-card-red':'');aHiLoActive=true;document.getElementById('a-hilo-hi').disabled=false;document.getElementById('a-hilo-lo').disabled=false;}
-function aHiLo(guess){if(!aHiLoActive)return;if(!spendCoins(aHiloBet))return;aHiLoActive=false;document.getElementById('a-hilo-hi').disabled=true;document.getElementById('a-hilo-lo').disabled=true;const nv=~~(Math.random()*13),ns=ASUITS[~~(Math.random()*4)];setTimeout(()=>{document.getElementById('a-hilo-val').textContent=AVALS[nv];document.getElementById('a-hilo-suit').textContent=ns;document.getElementById('a-hilo-card').className='a-card-display'+(ARED[ns]?' a-card-red':'');const ok=(guess==='hi'&&nv>aHiLoCurrent)||(guess==='lo'&&nv<aHiLoCurrent);if(ok){const w=~~(aHiloBet*1.85);earnCoins(w,'HiLo');showWinPopup(w,'Hi-Lo','\u{1F0CF}');aResult('a-hilo-result',`Correct! +${w} coins!`,'win');}else if(nv===aHiLoCurrent){COINS+=aHiloBet;syncAll();aResult('a-hilo-result','Same card  -  Push!','');}else aResult('a-hilo-result','Wrong!','lose');aHiLoCurrent=nv;setTimeout(()=>{aHiLoActive=true;document.getElementById('a-hilo-hi').disabled=false;document.getElementById('a-hilo-lo').disabled=false;aResult('a-hilo-result','','');},1200);},380);}
+function aHiLo(guess){if(!aHiLoActive)return;if(!spendCoins(aHiloBet))return;aHiLoActive=false;document.getElementById('a-hilo-hi').disabled=true;document.getElementById('a-hilo-lo').disabled=true;const nv=~~(Math.random()*13),ns=ASUITS[~~(Math.random()*4)];setTimeout(()=>{document.getElementById('a-hilo-val').textContent=AVALS[nv];document.getElementById('a-hilo-suit').textContent=ns;document.getElementById('a-hilo-card').className='a-card-display'+(ARED[ns]?' a-card-red':'');const ok=(guess==='hi'&&nv>aHiLoCurrent)||(guess==='lo'&&nv<aHiLoCurrent);if(ok){const w=~~(aHiloBet*1.15);earnCoins(w,'HiLo');showWinPopup(w,'Hi-Lo','\u{1F0CF}');aResult('a-hilo-result',`Correct! +${w} coins!`,'win');}else if(nv===aHiLoCurrent){COINS+=aHiloBet;syncAll();aResult('a-hilo-result','Same card  -  Push!','');}else aResult('a-hilo-result','Wrong!','lose');aHiLoCurrent=nv;setTimeout(()=>{aHiLoActive=true;document.getElementById('a-hilo-hi').disabled=false;document.getElementById('a-hilo-lo').disabled=false;aResult('a-hilo-result','','');},1200);},380);}
 
 /* Keno */
 let aKenoSel=new Set(),aKenoDone=false;
 function aInitKeno(){aKenoSel=new Set();aKenoDone=false;const g=document.getElementById('a-keno-grid');if(!g)return;g.innerHTML='';for(let i=1;i<=40;i++){const b=document.createElement('button');b.className='a-kn';b.textContent=i;b.onclick=()=>aToggleKeno(i,b);g.appendChild(b);}aResult('a-keno-result','','');document.getElementById('a-keno-btn').disabled=false;}
 function aToggleKeno(n,btn){if(aKenoDone)return;if(aKenoSel.has(n)){aKenoSel.delete(n);btn.classList.remove('sel');}else if(aKenoSel.size<10){aKenoSel.add(n);btn.classList.add('sel');}}
 function aResetKeno(){aInitKeno();}
-function aDrawKeno(){if(aKenoSel.size===0){aToast('Pick numbers first!');return;}if(!spendCoins(aKenoBet))return;aKenoDone=true;document.getElementById('a-keno-btn').disabled=true;const drawn=new Set();while(drawn.size<20)drawn.add(~~(Math.random()*40)+1);const hits=[...aKenoSel].filter(n=>drawn.has(n)).length;document.querySelectorAll('.a-kn').forEach(btn=>{const n=parseInt(btn.textContent),isSel=aKenoSel.has(n),isD=drawn.has(n);if(isSel&&isD)btn.classList.add('hit');else if(isD)btn.classList.add('drawn');});const pays=[0,0,2,5,10,20,50,100,250,500,1000];const w=~~(pays[Math.min(hits,10)]*(aKenoBet/10));if(w>0){earnCoins(w,'Keno');showWinPopup(w,'Keno','\u{1F3AF}');aResult('a-keno-result',`${hits} hits! +${w} coins!`,'win');}else aResult('a-keno-result',`${hits} hits. No win.`,'lose');setTimeout(()=>aInitKeno(),3000);}
+function aDrawKeno(){if(aKenoSel.size===0){aToast('Pick numbers first!');return;}if(!spendCoins(aKenoBet))return;aKenoDone=true;document.getElementById('a-keno-btn').disabled=true;const drawn=new Set();while(drawn.size<20)drawn.add(~~(Math.random()*40)+1);const hits=[...aKenoSel].filter(n=>drawn.has(n)).length;document.querySelectorAll('.a-kn').forEach(btn=>{const n=parseInt(btn.textContent),isSel=aKenoSel.has(n),isD=drawn.has(n);if(isSel&&isD)btn.classList.add('hit');else if(isD)btn.classList.add('drawn');});const pays=[0,0,1,3,8,18,40,90,200,400,900];const w=~~(pays[Math.min(hits,10)]*(aKenoBet/10));if(w>0){earnCoins(w,'Keno');showWinPopup(w,'Keno','\u{1F3AF}');aResult('a-keno-result',`${hits} hits! +${w} coins!`,'win');}else aResult('a-keno-result',`${hits} hits. No win.`,'lose');setTimeout(()=>aInitKeno(),3000);}
 
 /* Crash */
 let aCrashRunning=false,aCrashMult=1,aCrashTarget=2,aCrashCashed=false,aCrashWager=10,aCrashAF=null;
@@ -4442,18 +4477,18 @@ function rlUpdateStats(){
 function rlCheckWin(num,sel){
   const isRed=RL_RED.has(num),isBlack=num>0&&!isRed;
   switch(sel){
-    case 'red':    return[isRed,2];
-    case 'black':  return[isBlack,2];
-    case 'green':  return[num===0,35];
-    case 'odd':    return[num>0&&num%2===1,2];
-    case 'even':   return[num>0&&num%2===0,2];
-    case 'low':    return[num>=1&&num<=18,2];
-    case 'high':   return[num>=19&&num<=36,2];
-    case 'dozen1': return[num>=1&&num<=12,3];
-    case 'dozen2': return[num>=13&&num<=24,3];
-    case 'dozen3': return[num>=25&&num<=36,3];
-    case 'col1':   return[RL_COL1.includes(num),3];
-    case 'col2':   return[RL_COL2.includes(num),3];
+    case 'red':    return[isRed,1.8];
+    case 'black':  return[isBlack,1.8];
+    case 'green':  return[num===0,32];
+    case 'odd':    return[num>0&&num%2===1,1.8];
+    case 'even':   return[num>0&&num%2===0,1.8];
+    case 'low':    return[num>=1&&num<=18,1.8];
+    case 'high':   return[num>=19&&num<=36,1.8];
+    case 'dozen1': return[num>=1&&num<=12,2.7];
+    case 'dozen2': return[num>=13&&num<=24,2.7];
+    case 'dozen3': return[num>=25&&num<=36,2.7];
+    case 'col1':   return[RL_COL1.includes(num),2.7];
+    case 'col2':   return[RL_COL2.includes(num),2.7];
     default:       return[false,0];
   }
 }
@@ -5011,7 +5046,7 @@ function bjResolve(){
   const pBJ=pv===21&&bjPlayerHand.length===2,dBJ=dv===21&&bjDealerHand.length===2;
   let win=0,msg='',cls='';
   if(pBJ&&dBJ){win=bjBet;msg='PUSH  -  Both Blackjack!';cls='push';bjPushes++;}
-  else if(pBJ){win=Math.floor(bjBet*2.5);msg='BLACKJACK! \u{1F0A1}';cls='bj-win';bjWins++;bjWinStreak++;}
+  else if(pBJ){win=Math.floor(bjBet*2.2);msg='BLACKJACK! \u{1F0A1}';cls='bj-win';bjWins++;bjWinStreak++;}
   else if(dBJ){win=0;msg='DEALER BJ  -  You Lose';cls='lose';bjLosses++;bjWinStreak=0;}
   else if(pv>21){win=0;msg='BUST! \u{1F4A5}';cls='lose';bjLosses++;bjWinStreak=0;}
   else if(dv>21){win=bjBet*2;msg='DEALER BUST  -  WIN! \u{1F389}';cls='win';bjWins++;bjWinStreak++;}
