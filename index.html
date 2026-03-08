@@ -2122,6 +2122,7 @@ window.onerror = function(msg, src, line, col, err) {
    ═══════════════════════════════════════════════════════════ */
 let COINS=1000, SATS=0, JACKPOT=1247;
 let STREAK=0, LAST_CLAIM='', CLAIMED_TODAY=false;
+function _todayISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 let WEEKLY_CLAIMS={}, MONTHLY_CLAIMS={};
 let SESSION_START=Date.now(), SESSION_MINS=0;
 let TIME_CLAIMED={30:false,60:false,120:false,240:false};
@@ -2146,9 +2147,9 @@ function loadState(){
     if(s.dr!=null)DAILY_REDEEMED=s.dr;
     if(s.drd)DAILY_REDEEM_DATE=s.drd;
     // Reset daily counter if new day
-    const _today=new Date().toDateString();
+    const _today=_todayISO();
     if(DAILY_REDEEM_DATE!==_today){DAILY_REDEEMED=0;DAILY_REDEEM_DATE=_today;}
-    const today=new Date().toDateString();
+    const today=_todayISO();
     if(LAST_CLAIM){
       const diff=Math.floor((new Date()-new Date(LAST_CLAIM))/86400000);
       if(diff>1){STREAK=0;CLAIMED_TODAY=false;}
@@ -2398,14 +2399,14 @@ function renderStreakRewards(){
   }).join('');
 }
 function claimStreak(){
-  const _today=new Date().toDateString();
+  const _today=_todayISO();
   if(LAST_CLAIM===_today){hubToast('✅ Come back tomorrow!');return;}
   const idx=Math.min(STREAK,6);
   const r=STREAK_DEFS[idx];
   earnCoins(r.coins,'Daily Streak');
   if(r.sats>0)earnSats(r.sats);
   const claimedDay=STREAK+1;
-  STREAK=Math.min(STREAK+1,7);CLAIMED_TODAY=true;LAST_CLAIM=_today;
+  STREAK=Math.min(STREAK+1,7);CLAIMED_TODAY=true;LAST_CLAIM=_todayISO();
   saveState();renderStreakHub();renderStreakRewards();
   showRewardPopup('🔥','Day '+claimedDay+' Streak!',[{ico:'🪙',val:'+'+r.coins+' Coins'},{ico:'₿',val:r.sats>0?'₿'+r.sats:'Keep it up!'}],'var(--btc)');
   confetti();
@@ -5058,7 +5059,7 @@ async function onAuthSuccess(user,displayName){
     LAST_CLAIM=existing.last_claim??'';PLAYER_NAME=existing.display_name??name;
     PLAYER_AVATAR=existing.avatar??'&#x1F3AE;';PLAYER_LEVEL=existing.player_level??1;
     // Recalculate CLAIMED_TODAY and STREAK from LAST_CLAIM
-    const _signInToday=new Date().toDateString();
+    const _signInToday=_todayISO();
     CLAIMED_TODAY=(LAST_CLAIM===_signInToday);
     if(LAST_CLAIM && !CLAIMED_TODAY){
       const _diff=Math.floor((new Date()-new Date(LAST_CLAIM))/86400000);
