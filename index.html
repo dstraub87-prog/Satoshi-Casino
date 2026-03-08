@@ -215,11 +215,11 @@ body::after{content:'';position:fixed;inset:0;z-index:0;background:radial-gradie
 .p-mseg.on-n{background:linear-gradient(135deg,#2ecc71,#1a8c4e);color:#fff}
 .p-mseg.on-m2{background:linear-gradient(135deg,#f7931a,#ffb347);color:#1a0d00}.p-mseg.on-m3{background:linear-gradient(135deg,#e63946,#ff6b6b);color:#fff}.p-mseg.on-m4{background:linear-gradient(135deg,#a855f7,#c084fc);color:#fff}
 .plinko-game-area{flex:1;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;min-height:260px;max-height:calc(100vh - 240px);}
-.machine-frame{background:linear-gradient(180deg,#6b3a14,#3b1e08);border:3px solid #3b1e08;border-radius:7px 7px 2px 2px;padding:3px;box-shadow:0 0 0 2px #d4af37,0 0 18px rgba(212,175,55,.22),0 8px 20px rgba(0,0,0,.7);flex-shrink:0;}
+.machine-frame{background:linear-gradient(180deg,#6b3a14,#3b1e08);border:3px solid #3b1e08;border-radius:7px 7px 2px 2px;padding:3px 3px 0 3px;box-shadow:0 0 0 2px #d4af37,0 0 18px rgba(212,175,55,.22),0 8px 20px rgba(0,0,0,.7);flex-shrink:0;overflow:hidden;}
 .plinko-wrap.cm .machine-frame{box-shadow:0 0 0 2px #f7931a,0 0 22px rgba(247,147,26,.38),0 8px 20px rgba(0,0,0,.7)}
 #plinko-canvas{display:block;border-radius:2px;width:290px;height:420px;max-width:100%;}
-.bucket-row{display:flex;margin-top:1px;border-radius:0 0 2px 2px;overflow:hidden;width:290px;max-width:100%;}
-.bucket-cell{flex:1;text-align:center;font-family:'Audiowide',monospace;font-size:.42rem;padding:2px 1px;color:#fff;}
+.bucket-row{display:flex;margin-top:0;overflow:hidden;height:44px;width:100%;gap:0;align-items:stretch;}
+.bucket-cell{flex:1;text-align:center;font-family:'Bebas Neue',sans-serif;font-size:.68rem;color:#fff;display:flex;align-items:flex-start;justify-content:center;padding-top:6px;height:100%;line-height:1;overflow:hidden;letter-spacing:.5px;border-right:1px solid rgba(0,0,0,.3);}
 .bucket-cell.flash{animation:bFlash .28s ease}
 @keyframes bFlash{0%{transform:scale(1.18)}100%{transform:scale(1)}}
 .p-hist{width:100%;height:17px;flex-shrink:0;display:flex;align-items:center;overflow:hidden;background:rgba(0,0,0,.28);padding:0 5px;gap:5px;}
