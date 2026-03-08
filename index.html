@@ -2544,7 +2544,7 @@ function pInit(){
   _pCtx=_pCan.getContext('2d');
   // Size canvas to fit screen: viewport minus all fixed chrome
   // bbar~44 + stats~40 + hist~17 + toolbar~54 + safe~20 + padding~10 = ~185px
-  const avail=Math.max(200, window.innerHeight - 185);
+  const avail=Math.max(180, window.innerHeight - 270);
   const h=Math.min(avail, 420);
   const w=Math.round(h*(260/380));
   _pCan.width=w; _pCan.height=h;
