@@ -203,8 +203,8 @@ body::after{content:'';position:fixed;inset:0;z-index:0;background:radial-gradie
 .ld .highlight{background:rgba(247,147,26,.06);border-left:3px solid var(--btc);border-radius:0 5px 5px 0;padding:7px 9px;margin:7px 0;font-size:.65rem;color:rgba(255,255,255,.6);line-height:1.55;}
 .ld .contact-box{background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:9px;margin-top:9px;font-size:.62rem;color:var(--muted);line-height:1.75;}
 /* PLINKO */
-.plinko-wrap{display:flex;flex-direction:column;background:#0b0818;height:100%;overflow:hidden;}
-#screen-plinko .gcontent{overflow:hidden;display:flex;flex-direction:column;}
+.plinko-wrap{display:flex;flex-direction:column;background:#0b0818;flex:1;min-height:0;overflow:hidden;}
+#screen-plinko .gsw{padding-bottom:52px;}#screen-plinko .gcontent{overflow:hidden;display:flex;flex-direction:column;flex:1;min-height:0;}
 .plinko-stats{width:100%;background:linear-gradient(90deg,#3b1e08,#6b3a14,#3b1e08);border-bottom:3px solid #d4af37;display:flex;align-items:center;justify-content:space-between;padding:0 7px;gap:3px;height:40px;flex-shrink:0;}
 .ps-cell{display:flex;flex-direction:column;align-items:center;flex:1;min-width:0;}
 .ps-lbl{font-size:.36rem;letter-spacing:2px;color:#d4af37;text-transform:uppercase;font-family:'Audiowide',monospace;}
@@ -218,7 +218,7 @@ body::after{content:'';position:fixed;inset:0;z-index:0;background:radial-gradie
 .plinko-game-area{flex:1;min-height:0;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:2px 0;}
 .machine-frame{flex-shrink:0;box-shadow:0 0 0 2px #d4af37,0 0 18px rgba(212,175,55,.22),0 8px 20px rgba(0,0,0,.7);border-radius:7px;}
 .plinko-wrap.cm .machine-frame{box-shadow:0 0 0 2px #f7931a,0 0 22px rgba(247,147,26,.38),0 8px 20px rgba(0,0,0,.7);}
-#plinko-canvas{display:block;border-radius:7px;max-width:100%;max-height:100%;width:auto;height:auto;}
+#plinko-canvas{display:block;border-radius:7px;}
 .p-hist{width:100%;height:17px;flex-shrink:0;display:flex;align-items:center;overflow:hidden;background:rgba(0,0,0,.28);padding:0 5px;gap:5px;}
 .p-hi{font-size:.38rem;color:rgba(255,255,255,.32);white-space:nowrap;font-family:'Audiowide',monospace;}
 .p-toolbar{width:100%;flex-shrink:0;background:linear-gradient(0deg,#0a0615,#130c28);border-top:2px solid #d4af37;display:flex;align-items:center;gap:5px;padding:0 7px;height:54px;padding-bottom:env(safe-area-inset-bottom,0);}
@@ -1303,34 +1303,36 @@ window.onerror = function(msg, src, line, col, err) {
         </div>
       </div>
       <div class="p-hist" id="p-hist"></div>
-      <div class="p-toolbar">
-        <button class="p-side-btn" onclick="openBallsShop()"><span style="font-size:.75rem">🎱</span><span>Balls</span></button>
-        <button class="p-drop-btn" id="p-drop-btn" onclick="pDrop()">▼ DROP</button>
-      </div>
-      <div class="p-win-pop" id="p-win-pop">
-        <div class="p-win-card">
-          <div class="p-win-emoji" id="p-win-emoji">🎉</div>
-          <div class="p-win-title" id="p-win-title">YOU WIN!</div>
-          <div class="p-win-prize" id="p-win-prize">+100 coins</div>
-          <button class="p-win-close" onclick="document.getElementById('p-win-pop').classList.remove('show')">COLLECT!</button>
-        </div>
-      </div>
-      <div class="p-bonus-ov" id="p-bonus-ov">
-        <div class="p-bonus-card">
-          <div class="p-bonus-title">⚡ BONUS ROUND!</div>
-          <div class="p-bonus-sub">Pick tiles · Avoid bombs</div>
-          <div class="p-bonus-picks">Picks left: <span id="p-bleft">3</span></div>
-          <div class="p-bonus-board" id="p-bonus-board"></div>
-          <div style="font-size:.38rem;color:rgba(255,255,255,.3);letter-spacing:3px;text-transform:uppercase">Total Won</div>
-          <div class="p-bonus-total" id="p-bonus-total">0 coins</div>
-          <button class="p-bonus-collect" id="p-bonus-collect" onclick="pCollectBonus()">✓ Collect!</button>
-        </div>
-      </div>
-      <div class="p-toast" id="p-toast"></div>
     </div></div>
+    <div class="p-toolbar">
+      <button class="p-side-btn" onclick="openBallsShop()"><span style="font-size:.75rem">🎱</span><span>Balls</span></button>
+      <button class="p-drop-btn" id="p-drop-btn" onclick="pDrop()">▼ DROP</button>
+    </div>
   </div>
+  <div class="p-win-pop" id="p-win-pop">
+    <div class="p-win-card">
+      <div class="p-win-emoji" id="p-win-emoji">🎉</div>
+      <div class="p-win-title" id="p-win-title">YOU WIN!</div>
+      <div class="p-win-prize" id="p-win-prize">+100 coins</div>
+      <button class="p-win-close" onclick="document.getElementById('p-win-pop').classList.remove('show')">COLLECT!</button>
+    </div>
+  </div>
+  <div class="p-bonus-ov" id="p-bonus-ov">
+    <div class="p-bonus-card">
+      <div class="p-bonus-title">⚡ BONUS ROUND!</div>
+      <div class="p-bonus-sub">Pick tiles · Avoid bombs</div>
+      <div class="p-bonus-picks">Picks left: <span id="p-bleft">3</span></div>
+      <div class="p-bonus-board" id="p-bonus-board"></div>
+      <div style="font-size:.38rem;color:rgba(255,255,255,.3);letter-spacing:3px;text-transform:uppercase">Total Won</div>
+      <div class="p-bonus-total" id="p-bonus-total">0 coins</div>
+      <button class="p-bonus-collect" id="p-bonus-collect" onclick="pCollectBonus()">✓ Collect!</button>
+    </div>
+  </div>
+  <div class="p-toast" id="p-toast"></div>
 </div>
+
 <!-- SLOTS -->
+
 <div class="screen" id="screen-slots">
   <div class="gsw">
     <div class="bbar">
@@ -2533,13 +2535,20 @@ const PLINKO={balls:5,score:0,multi:1,activeDrops:0,history:[],bonusActive:false
 const PN_B=[{l:'💀',m:0,c:'#1a0a0a'},{l:'2x',m:2,c:'#6b1a1a'},{l:'5x',m:5,c:'#6b3500'},{l:'10x',m:10,c:'#3a1a6b'},{l:'50x',m:50,c:'#8a6a00'},{l:'10x',m:10,c:'#3a1a6b'},{l:'5x',m:5,c:'#6b3500'},{l:'2x',m:2,c:'#6b1a1a'},{l:'💀',m:0,c:'#1a0a0a'}];
 let _pCan,_pCtx,_pPegs=[],_pBalls=[],_pParticles=[],_pRaf=null;
 const _pW=260,_pH=380,_pBH=44;
+let _pDynW=260,_pDynH=380,_pDynBH=44;
 
 function pInit(){
   if(_pRaf){cancelAnimationFrame(_pRaf);_pRaf=null;}
   _pCan=document.getElementById('plinko-canvas');
   if(!_pCan)return;
   _pCtx=_pCan.getContext('2d');
-  _pCan.width=_pW;_pCan.height=_pH;
+  // Size canvas to fit screen: viewport minus all fixed chrome
+  // bbar~44 + stats~40 + hist~17 + toolbar~54 + safe~20 + padding~10 = ~185px
+  const avail=Math.max(200, window.innerHeight - 185);
+  const h=Math.min(avail, 420);
+  const w=Math.round(h*(260/380));
+  _pCan.width=w; _pCan.height=h;
+  _pDynW=w; _pDynH=h; _pDynBH=Math.round(h*0.115);
   PLINKO.activeDrops=0;PLINKO.roundTotal=0;PLINKO.roundBest=0;
   _pBalls=[];_pParticles=[];
   _pBuildPegs();
@@ -2549,12 +2558,13 @@ function pInit(){
 
 function _pBuildPegs(){
   _pPegs=[];
-  const sy=_pH*0.06,avail=_pH-sy-_pBH-10;
+  const W=_pDynW,H=_pDynH,BH=_pDynBH;
+  const sy=H*0.06,avail=H-sy-BH-10;
   const rh=avail/10;
   for(let row=0;row<10;row++){
-    const cols=5+row,rw=_pW/(cols+1);
+    const cols=5+row,rw=W/(cols+1);
     for(let col=0;col<cols;col++)
-      _pPegs.push({x:rw*(col+1),y:sy+row*rh,r:4,hit:0});
+      _pPegs.push({x:rw*(col+1),y:sy+row*rh,r:Math.max(3,Math.round(W*0.014)),hit:0});
   }
 }
 
@@ -2563,25 +2573,25 @@ function _pFrame(){
   const ctx=_pCtx;
   // Background
   ctx.fillStyle='#0b0818';
-  ctx.fillRect(0,0,_pW,_pH);
+  ctx.fillRect(0,0,_pDynW,_pDynH);
 
   // Draw buckets at bottom
-  const bw=_pW/PN_B.length;
+  const bw=_pDynW/PN_B.length;
   for(let i=0;i<PN_B.length;i++){
     const b=PN_B[i];
     const x=i*bw;
     // Full color fill
     ctx.fillStyle=b.c;
-    ctx.fillRect(x,_pH-_pBH,bw,_pBH);
+    ctx.fillRect(x,_pDynH-_pDynBH,bw,_pDynBH);
     // Divider
     ctx.fillStyle='rgba(0,0,0,0.4)';
-    ctx.fillRect(x,_pH-_pBH,1,_pBH);
+    ctx.fillRect(x,_pDynH-_pDynBH,1,_pDynBH);
     // Label centered in bucket
     ctx.fillStyle='#ffffff';
     ctx.font='bold 11px "Bebas Neue",sans-serif';
     ctx.textAlign='center';
     ctx.textBaseline='middle';
-    ctx.fillText(b.l,x+bw/2,_pH-_pBH/2);
+    ctx.fillText(b.l,x+bw/2,_pDynH-_pDynBH/2);
   }
 
   // Pegs
@@ -2619,7 +2629,7 @@ function _pFrame(){
   // Drop target dot
   if(PLINKO.activeDrops===0&&!PLINKO.bonusActive){
     ctx.beginPath();
-    ctx.arc(_pW/2,12,5,0,Math.PI*2);
+    ctx.arc(_pDynW/2,12,5,0,Math.PI*2);
     ctx.fillStyle='rgba(255,45,120,0.5)';
     ctx.fill();
   }
@@ -2631,7 +2641,7 @@ function _pTickBall(b){
   b.vy+=0.22;b.vx*=0.997;
   b.x+=b.vx;b.y+=b.vy;
   if(b.x-b.r<0){b.x=b.r;b.vx=Math.abs(b.vx);}
-  if(b.x+b.r>_pW){b.x=_pW-b.r;b.vx=-Math.abs(b.vx);}
+  if(b.x+b.r>_pDynW){b.x=_pDynW-b.r;b.vx=-Math.abs(b.vx);}
   for(const p of _pPegs){
     const dx=b.x-p.x,dy=b.y-p.y,d=Math.sqrt(dx*dx+dy*dy);
     if(d<b.r+p.r+1){
@@ -2643,8 +2653,8 @@ function _pTickBall(b){
   }
   b.trail.push({x:b.x,y:b.y});
   if(b.trail.length>10)b.trail.shift();
-  if(b.y+b.r>=_pH-_pBH){
-    b.bi=Math.min(Math.floor(b.x/(_pW/PN_B.length)),PN_B.length-1);
+  if(b.y+b.r>=_pDynH-_pDynBH){
+    b.bi=Math.min(Math.floor(b.x/(_pDynW/PN_B.length)),PN_B.length-1);
     b.done=true;
     // Burst particles
     for(let i=0;i<8;i++)_pParticles.push({x:b.x,y:b.y,vx:(Math.random()-0.5)*3,vy:-Math.random()*3,r:3,life:1,decay:0.06,col:b.color});
@@ -2710,9 +2720,9 @@ function pDrop(){
   PLINKO.roundTotal=0;PLINKO.roundBest=0;
   _pUpdateBtn();
   for(let i=0;i<PLINKO.multi;i++){
-    const spread=(_pW*0.18)*(i-(PLINKO.multi-1)/2)/(Math.max(PLINKO.multi-1,1));
+    const spread=(_pDynW*0.18)*(i-(PLINKO.multi-1)/2)/(Math.max(PLINKO.multi-1,1));
     setTimeout(()=>{
-      _pBalls.push({x:_pW/2+spread+(Math.random()-0.5)*_pW*0.08,y:_pH*0.04,vx:(Math.random()-0.5)*0.9,vy:2,r:6,done:false,trail:[],bi:-1,color:'hsl('+(Math.random()*360)+',90%,60%)'});
+      _pBalls.push({x:_pDynW/2+spread+(Math.random()-0.5)*_pDynW*0.08,y:_pDynH*0.04,vx:(Math.random()-0.5)*0.9,vy:2,r:6,done:false,trail:[],bi:-1,color:'hsl('+(Math.random()*360)+',90%,60%)'});
     },i*120);
   }
 }
