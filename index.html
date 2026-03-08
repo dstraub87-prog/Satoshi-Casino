@@ -4464,21 +4464,31 @@ function rlSpin(){trackGame();
   rlSpinning=true;
   document.getElementById('rl-spin-btn').disabled=true;
   document.getElementById('rl-result').textContent='';
-  // Pick random landing number
-  const landIdx=Math.floor(Math.random()*RL_NUMS.length);
+  // Pick a random target slot and calculate exact final angle to land on it
+  const n=RL_NUMS.length, arc=Math.PI*2/n;
+  const landIdx=Math.floor(Math.random()*n);
   const landNum=RL_NUMS[landIdx];
-  // Animate: spin fast then slow to land
-  const totalRot=Math.PI*2*(5+Math.random()*3);
-  const targetAngle=rlAngle+totalRot-(landIdx*(Math.PI*2/RL_NUMS.length));
-  const start=performance.now(),dur=3800;
-  const startAngle=rlAngle;
+  // Full rotations (5-8) plus exact offset so landIdx slot sits under the top pointer
+  // Pointer is at top = angle 0 in our drawing frame (we offset by -PI/2 in draw)
+  // Slice i center is at: finalAngle + landIdx*arc + arc/2 = 0 (mod 2PI)
+  // => finalAngle = -(landIdx*arc + arc/2)
+  const fullSpins = (5 + Math.floor(Math.random()*4)) * Math.PI * 2;
+  const slotCenter = -(landIdx * arc + arc/2);
+  // Normalise so we always spin forward
+  const normalised = ((slotCenter % (Math.PI*2)) + Math.PI*2) % (Math.PI*2);
+  const finalAngle = normalised + fullSpins;
+  const startAngle = rlAngle;
+  const totalRot = finalAngle - (startAngle % (Math.PI*2));
+  const dur=3800, start=performance.now();
   function tick(now){
     const t=Math.min((now-start)/dur,1);
-    const ease=t<1?1-Math.pow(1-t,3):1; // ease-out cubic
+    const ease=1-Math.pow(1-t,4); // ease-out quart
     rlAngle=startAngle+totalRot*ease;
     rlDrawWheel(rlAngle);
     if(t<1){requestAnimationFrame(tick);return;}
-    // Done
+    // Snap to exact final angle so visual matches perfectly
+    rlAngle=startAngle+totalRot;
+    rlDrawWheel(rlAngle);
     rlSpinning=false;
     document.getElementById('rl-spin-btn').disabled=false;
     const[won,mult]=rlCheckWin(landNum,rlSelection);
