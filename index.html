@@ -5037,6 +5037,176 @@ function lbBuild(){
   Object.entries(fields).forEach(([id,val])=>{const e=document.getElementById(id);if(e)e.textContent=val;});
 }
 
+
+
+/* === SUPABASE AUTH ========================================== */
+const SUPA_URL='https://udrymlujfjysiobfhhix.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkcnltbHVqZmp5c2lvYmZoaGl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5MDU3NTcsImV4cCI6MjA4ODQ4MTc1N30.9ECzc7xdfwgyImzuoiI5rLo3wfgwSGiG722q6A9J1U0';
+let _supa=null,_authUser=null,_syncTimer=null;
+
+function getSupabase(){
+  if(!_supa&&typeof supabase!=='undefined')_supa=supabase.createClient(SUPA_URL,SUPA_KEY);
+  return _supa;
+}
+function openAuthModal(){document.getElementById('auth-modal').classList.add('show');}
+function closeAuthModal(){document.getElementById('auth-modal').classList.remove('show');}
+function authSetTab(t){
+  document.getElementById('auth-panel-in').style.display=t==='in'?'':'none';
+  document.getElementById('auth-panel-up').style.display=t==='up'?'':'none';
+  document.getElementById('auth-tab-in').classList.toggle('active',t==='in');
+  document.getElementById('auth-tab-up').classList.toggle('active',t==='up');
+  document.getElementById('auth-msg-in').textContent='';
+  document.getElementById('auth-msg-up').textContent='';
+}
+function authMsg(id,msg,isErr){const el=document.getElementById(id);if(el){el.textContent=msg;el.className='auth-msg '+(isErr?'err':'ok');}}
+function onAccountBtnClick(){if(_authUser)openProfile();else openAuthModal();}
+function updateAccountBtn(signedIn){
+  // Update sign out button visibility in profile sheet
+  const soBtn=document.getElementById('ps-signout-btn');
+  const acInfo=document.getElementById('ps-account-info');
+  const acEmail=document.getElementById('ps-account-email');
+  if(soBtn)soBtn.style.display=signedIn?'':'none';
+  if(acInfo)acInfo.style.display=signedIn?'':'none';
+  if(acEmail&&_authUser)acEmail.textContent='Signed in as '+_authUser.email;
+  // Update hdr-avatar border to indicate signed-in state
+  const ava=document.getElementById('hdr-avatar');
+  if(ava)ava.style.borderColor=signedIn?'var(--gold)':'var(--btc)';
+}
+async function authSignIn(){
+  const sb=getSupabase();if(!sb)return;
+  const email=document.getElementById('auth-email-in').value.trim();
+  const pass=document.getElementById('auth-pass-in').value;
+  if(!email||!pass){authMsg('auth-msg-in','Please fill in all fields',true);return;}
+  const btn=document.getElementById('auth-signin-btn');btn.disabled=true;btn.textContent='SIGNING IN...';
+  const {data,error}=await sb.auth.signInWithPassword({email,password:pass});
+  btn.disabled=false;btn.textContent='SIGN IN';
+  if(error){authMsg('auth-msg-in',error.message,true);return;}
+  await onAuthSuccess(data.user);closeAuthModal();
+}
+async function authSignUp(){
+  const sb=getSupabase();if(!sb)return;
+  const email=document.getElementById('auth-email-up').value.trim();
+  const pass=document.getElementById('auth-pass-up').value;
+  const name=document.getElementById('auth-name-up').value.trim()||'Player';
+  if(!email||!pass){authMsg('auth-msg-up','Please fill in all fields',true);return;}
+  if(pass.length<6){authMsg('auth-msg-up','Password must be at least 6 characters',true);return;}
+  const btn=document.getElementById('auth-signup-btn');btn.disabled=true;btn.textContent='CREATING...';
+  const {data,error}=await sb.auth.signUp({email,password:pass,options:{data:{display_name:name}}});
+  btn.disabled=false;btn.textContent='CREATE ACCOUNT';
+  if(error){authMsg('auth-msg-up',error.message,true);return;}
+  if(data.user&&!data.session){authMsg('auth-msg-up','Check your email to confirm your account!',false);return;}
+  await onAuthSuccess(data.user,name);closeAuthModal();
+}
+async function authOAuth(provider){
+  const sb=getSupabase();if(!sb)return;
+  authMsg('auth-msg-oauth','Redirecting...',false);
+  const {error}=await sb.auth.signInWithOAuth({provider,options:{redirectTo:window.location.origin+window.location.pathname}});
+  if(error)authMsg('auth-msg-oauth',error.message,true);
+}
+async function authForgot(){
+  const sb=getSupabase();if(!sb)return;
+  const email=document.getElementById('auth-email-in').value.trim();
+  if(!email){authMsg('auth-msg-in','Enter your email first',true);return;}
+  const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+window.location.pathname});
+  if(error)authMsg('auth-msg-in',error.message,true);
+  else authMsg('auth-msg-in','Reset email sent!',false);
+}
+async function onAuthSuccess(user,displayName){
+  _authUser=user;
+  const sb=getSupabase();
+  const name=displayName||user.user_metadata?.display_name||user.email.split('@')[0];
+  const {data:existing}=await sb.from('profiles').select('*').eq('id',user.id).single();
+  if(!existing){
+    await sb.from('profiles').insert({
+      id:user.id,display_name:name,avatar:PLAYER_AVATAR,
+      coins:COINS,sats:SATS,lifetime_coins:LIFETIME_COINS,lifetime_sats:LIFETIME_SATS,
+      games_played:GAMES_PLAYED,streak:STREAK,last_claim:LAST_CLAIM||null,
+      player_level:PLAYER_LEVEL||1,player_xp:PLAYER_XP||0
+    });
+    hubToast('Account created! Progress synced &#x2713;');
+  } else {
+    COINS=existing.coins??1000;SATS=existing.sats??0;
+    LIFETIME_COINS=existing.lifetime_coins??0;LIFETIME_SATS=existing.lifetime_sats??0;
+    GAMES_PLAYED=existing.games_played??0;STREAK=existing.streak??0;
+    LAST_CLAIM=existing.last_claim??'';PLAYER_NAME=existing.display_name??name;
+    PLAYER_AVATAR=existing.avatar??'&#x1F3AE;';PLAYER_LEVEL=existing.player_level??1;
+    // Recalculate CLAIMED_TODAY and STREAK from LAST_CLAIM
+    const _signInToday=_todayISO();
+    CLAIMED_TODAY=(LAST_CLAIM===_signInToday);
+    if(LAST_CLAIM && !CLAIMED_TODAY){
+      const _diff=Math.floor((new Date()-new Date(LAST_CLAIM))/86400000);
+      if(_diff>1){STREAK=0;}
+    }
+    syncAll();saveState();
+    hubToast('Welcome back, '+PLAYER_NAME+'! &#x2713;');
+  }
+  updateAccountBtn(true);refreshAvatarUI();updateLevel(false);
+}
+async function syncToServer(){
+  if(!_authUser)return;
+  const sb=getSupabase();if(!sb)return;
+  const payload={
+    id:_authUser.id,
+    coins:COINS,sats:SATS,lifetime_coins:LIFETIME_COINS,lifetime_sats:LIFETIME_SATS,
+    games_played:GAMES_PLAYED,streak:STREAK,last_claim:LAST_CLAIM||null,
+    player_level:PLAYER_LEVEL||1,player_xp:PLAYER_XP||0,
+    avatar:PLAYER_AVATAR,display_name:PLAYER_NAME
+  };
+  const {error}=await sb.from('profiles').upsert(payload,{onConflict:'id'});
+  if(error)console.error('[Sats Arcade] Supabase sync error:',error.message,error.code);
+  else console.log('[Sats Arcade] Synced OK - coins:'+COINS+' sats:'+SATS);
+}
+
+function showWinPopup(coins, game, emoji){
+  if(!coins||coins<=0)return;
+  const emoji_map={big:'\u{1F4B0}',jackpot:'\u{1F3B0}',default:'\u{1F389}'};
+  document.getElementById('win-popup-emoji').textContent=emoji||(coins>=500?'\u{1F4B0}':coins>=100?'\u{1F38A}':'\u{1F389}');
+  document.getElementById('win-popup-title').textContent=coins>=500?'BIG WIN!':'YOU WIN!';
+  document.getElementById('win-popup-game').textContent=(game||'').toUpperCase();
+  document.getElementById('win-popup-amount').textContent='+'+coins.toLocaleString();
+  document.getElementById('win-popup').classList.add('show');
+  // Disable plinko drop so RAF loop can't accept new drops while popup is up
+  const _db=document.getElementById('p-drop-btn');if(_db)_db.disabled=true;
+  confetti();
+}
+function closeWinPopup(){
+  document.getElementById('win-popup').classList.remove('show');
+  // Re-enable plinko drop button if we're on plinko
+  if(typeof _pUpdateBtn==='function')_pUpdateBtn();
+}
+
+function sCloseWin(){document.getElementById('s-win-modal').classList.remove('show');}
+function debouncedSyncToServer(){
+  if(!_authUser)return;
+  clearTimeout(_syncTimer);_syncTimer=setTimeout(syncToServer,3000);
+}
+async function authSignOut(){
+  const sb=getSupabase();if(!sb)return;
+  await syncToServer();
+  await sb.auth.signOut();
+  _authUser=null;
+  // Reset all game state to defaults so next account loads clean
+  COINS=1000;SATS=0;JACKPOT=1247;
+  STREAK=0;LAST_CLAIM='';CLAIMED_TODAY=false;
+  WEEKLY_CLAIMS={};MONTHLY_CLAIMS={};
+  TIME_CLAIMED={30:false,60:false,120:false,240:false};
+  AD_WATCH_NEXT=0;REDEEM_HIST=[];DAILY_REDEEMED=0;DAILY_REDEEM_DATE='';
+  PLAYER_NAME='Player One';PLAYER_AVATAR='\u{1F3AE}';PLAYER_AVATAR_IMG='';
+  GAMES_PLAYED=0;LIFETIME_COINS=0;LIFETIME_SATS=0;PLAYER_LEVEL=1;PLAYER_XP=0;
+  // Clear localStorage so guest state doesn't bleed in
+  try{localStorage.removeItem('sah_v5');localStorage.removeItem('sah_profile');}catch(e){}
+  syncAll();refreshAvatarUI();updateLevel(false);
+  updateAccountBtn(false);hubToast('Signed out');
+}
+async function authInit(){
+  const sb=getSupabase();if(!sb)return;
+  const {data:{session}}=await sb.auth.getSession();
+  if(session?.user)await onAuthSuccess(session.user);
+  sb.auth.onAuthStateChange(async(event,session)=>{
+    if(event==='SIGNED_IN'&&session?.user&&!_authUser){await onAuthSuccess(session.user);closeAuthModal();}
+    if(event==='SIGNED_OUT'){_authUser=null;updateAccountBtn(false);}
+  });
+}
 </script>
 
 <!-- AUTH MODAL -->
@@ -5090,173 +5260,3 @@ function lbBuild(){
     <button class="win-popup-btn" onclick="closeWinPopup()">COLLECT!</button>
   </div>
 </div>
-<script>
-/* === SUPABASE AUTH ========================================== */
-const SUPA_URL='https://udrymlujfjysiobfhhix.supabase.co';
-const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkcnltbHVqZmp5c2lvYmZoaGl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5MDU3NTcsImV4cCI6MjA4ODQ4MTc1N30.9ECzc7xdfwgyImzuoiI5rLo3wfgwSGiG722q6A9J1U0';
-let _supa=null,_authUser=null,_syncTimer=null;
-
-function getSupabase(){
-if(!_supa&&typeof supabase!==‘undefined’)_supa=supabase.createClient(SUPA_URL,SUPA_KEY);
-return _supa;
-}
-function openAuthModal(){document.getElementById(‘auth-modal’).classList.add(‘show’);}
-function closeAuthModal(){document.getElementById(‘auth-modal’).classList.remove(‘show’);}
-function authSetTab(t){
-document.getElementById(‘auth-panel-in’).style.display=t===‘in’?’’:‘none’;
-document.getElementById(‘auth-panel-up’).style.display=t===‘up’?’’:‘none’;
-document.getElementById(‘auth-tab-in’).classList.toggle(‘active’,t===‘in’);
-document.getElementById(‘auth-tab-up’).classList.toggle(‘active’,t===‘up’);
-document.getElementById(‘auth-msg-in’).textContent=’’;
-document.getElementById(‘auth-msg-up’).textContent=’’;
-}
-function authMsg(id,msg,isErr){const el=document.getElementById(id);if(el){el.textContent=msg;el.className=‘auth-msg ‘+(isErr?‘err’:‘ok’);}}
-function onAccountBtnClick(){if(_authUser)openProfile();else openAuthModal();}
-function updateAccountBtn(signedIn){
-// Update sign out button visibility in profile sheet
-const soBtn=document.getElementById(‘ps-signout-btn’);
-const acInfo=document.getElementById(‘ps-account-info’);
-const acEmail=document.getElementById(‘ps-account-email’);
-if(soBtn)soBtn.style.display=signedIn?’’:‘none’;
-if(acInfo)acInfo.style.display=signedIn?’’:‘none’;
-if(acEmail&&_authUser)acEmail.textContent=‘Signed in as ‘+_authUser.email;
-// Update hdr-avatar border to indicate signed-in state
-const ava=document.getElementById(‘hdr-avatar’);
-if(ava)ava.style.borderColor=signedIn?‘var(–gold)’:‘var(–btc)’;
-}
-async function authSignIn(){
-const sb=getSupabase();if(!sb)return;
-const email=document.getElementById(‘auth-email-in’).value.trim();
-const pass=document.getElementById(‘auth-pass-in’).value;
-if(!email||!pass){authMsg(‘auth-msg-in’,‘Please fill in all fields’,true);return;}
-const btn=document.getElementById(‘auth-signin-btn’);btn.disabled=true;btn.textContent=‘SIGNING IN…’;
-const {data,error}=await sb.auth.signInWithPassword({email,password:pass});
-btn.disabled=false;btn.textContent=‘SIGN IN’;
-if(error){authMsg(‘auth-msg-in’,error.message,true);return;}
-await onAuthSuccess(data.user);closeAuthModal();
-}
-async function authSignUp(){
-const sb=getSupabase();if(!sb)return;
-const email=document.getElementById(‘auth-email-up’).value.trim();
-const pass=document.getElementById(‘auth-pass-up’).value;
-const name=document.getElementById(‘auth-name-up’).value.trim()||‘Player’;
-if(!email||!pass){authMsg(‘auth-msg-up’,‘Please fill in all fields’,true);return;}
-if(pass.length<6){authMsg(‘auth-msg-up’,‘Password must be at least 6 characters’,true);return;}
-const btn=document.getElementById(‘auth-signup-btn’);btn.disabled=true;btn.textContent=‘CREATING…’;
-const {data,error}=await sb.auth.signUp({email,password:pass,options:{data:{display_name:name}}});
-btn.disabled=false;btn.textContent=‘CREATE ACCOUNT’;
-if(error){authMsg(‘auth-msg-up’,error.message,true);return;}
-if(data.user&&!data.session){authMsg(‘auth-msg-up’,‘Check your email to confirm your account!’,false);return;}
-await onAuthSuccess(data.user,name);closeAuthModal();
-}
-async function authOAuth(provider){
-const sb=getSupabase();if(!sb)return;
-authMsg(‘auth-msg-oauth’,‘Redirecting…’,false);
-const {error}=await sb.auth.signInWithOAuth({provider,options:{redirectTo:window.location.origin+window.location.pathname}});
-if(error)authMsg(‘auth-msg-oauth’,error.message,true);
-}
-async function authForgot(){
-const sb=getSupabase();if(!sb)return;
-const email=document.getElementById(‘auth-email-in’).value.trim();
-if(!email){authMsg(‘auth-msg-in’,‘Enter your email first’,true);return;}
-const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+window.location.pathname});
-if(error)authMsg(‘auth-msg-in’,error.message,true);
-else authMsg(‘auth-msg-in’,‘Reset email sent!’,false);
-}
-async function onAuthSuccess(user,displayName){
-_authUser=user;
-const sb=getSupabase();
-const name=displayName||user.user_metadata?.display_name||user.email.split(’@’)[0];
-const {data:existing}=await sb.from(‘profiles’).select(’*’).eq(‘id’,user.id).single();
-if(!existing){
-await sb.from(‘profiles’).insert({
-id:user.id,display_name:name,avatar:PLAYER_AVATAR,
-coins:COINS,sats:SATS,lifetime_coins:LIFETIME_COINS,lifetime_sats:LIFETIME_SATS,
-games_played:GAMES_PLAYED,streak:STREAK,last_claim:LAST_CLAIM||null,
-player_level:PLAYER_LEVEL||1,player_xp:PLAYER_XP||0
-});
-hubToast(‘Account created! Progress synced ✓’);
-} else {
-COINS=existing.coins??1000;SATS=existing.sats??0;
-LIFETIME_COINS=existing.lifetime_coins??0;LIFETIME_SATS=existing.lifetime_sats??0;
-GAMES_PLAYED=existing.games_played??0;STREAK=existing.streak??0;
-LAST_CLAIM=existing.last_claim??’’;PLAYER_NAME=existing.display_name??name;
-PLAYER_AVATAR=existing.avatar??’🎮’;PLAYER_LEVEL=existing.player_level??1;
-// Recalculate CLAIMED_TODAY and STREAK from LAST_CLAIM
-const _signInToday=_todayISO();
-CLAIMED_TODAY=(LAST_CLAIM===_signInToday);
-if(LAST_CLAIM && !CLAIMED_TODAY){
-const _diff=Math.floor((new Date()-new Date(LAST_CLAIM))/86400000);
-if(_diff>1){STREAK=0;}
-}
-syncAll();saveState();
-hubToast(‘Welcome back, ‘+PLAYER_NAME+’! ✓’);
-}
-updateAccountBtn(true);refreshAvatarUI();updateLevel(false);
-}
-async function syncToServer(){
-if(!_authUser)return;
-const sb=getSupabase();if(!sb)return;
-const payload={
-id:_authUser.id,
-coins:COINS,sats:SATS,lifetime_coins:LIFETIME_COINS,lifetime_sats:LIFETIME_SATS,
-games_played:GAMES_PLAYED,streak:STREAK,last_claim:LAST_CLAIM||null,
-player_level:PLAYER_LEVEL||1,player_xp:PLAYER_XP||0,
-avatar:PLAYER_AVATAR,display_name:PLAYER_NAME
-};
-const {error}=await sb.from(‘profiles’).upsert(payload,{onConflict:‘id’});
-if(error)console.error(’[Sats Arcade] Supabase sync error:’,error.message,error.code);
-else console.log(’[Sats Arcade] Synced OK - coins:’+COINS+’ sats:’+SATS);
-}
-
-function showWinPopup(coins, game, emoji){
-if(!coins||coins<=0)return;
-const emoji_map={big:’\u{1F4B0}’,jackpot:’\u{1F3B0}’,default:’\u{1F389}’};
-document.getElementById(‘win-popup-emoji’).textContent=emoji||(coins>=500?’\u{1F4B0}’:coins>=100?’\u{1F38A}’:’\u{1F389}’);
-document.getElementById(‘win-popup-title’).textContent=coins>=500?‘BIG WIN!’:‘YOU WIN!’;
-document.getElementById(‘win-popup-game’).textContent=(game||’’).toUpperCase();
-document.getElementById(‘win-popup-amount’).textContent=’+’+coins.toLocaleString();
-document.getElementById(‘win-popup’).classList.add(‘show’);
-// Disable plinko drop so RAF loop can’t accept new drops while popup is up
-const _db=document.getElementById(‘p-drop-btn’);if(_db)_db.disabled=true;
-confetti();
-}
-function closeWinPopup(){
-document.getElementById(‘win-popup’).classList.remove(‘show’);
-// Re-enable plinko drop button if we’re on plinko
-if(typeof _pUpdateBtn===‘function’)_pUpdateBtn();
-}
-
-function sCloseWin(){document.getElementById(‘s-win-modal’).classList.remove(‘show’);}
-function debouncedSyncToServer(){
-if(!_authUser)return;
-clearTimeout(_syncTimer);_syncTimer=setTimeout(syncToServer,3000);
-}
-async function authSignOut(){
-const sb=getSupabase();if(!sb)return;
-await syncToServer();
-await sb.auth.signOut();
-_authUser=null;
-// Reset all game state to defaults so next account loads clean
-COINS=1000;SATS=0;JACKPOT=1247;
-STREAK=0;LAST_CLAIM=’’;CLAIMED_TODAY=false;
-WEEKLY_CLAIMS={};MONTHLY_CLAIMS={};
-TIME_CLAIMED={30:false,60:false,120:false,240:false};
-AD_WATCH_NEXT=0;REDEEM_HIST=[];DAILY_REDEEMED=0;DAILY_REDEEM_DATE=’’;
-PLAYER_NAME=‘Player One’;PLAYER_AVATAR=’\u{1F3AE}’;PLAYER_AVATAR_IMG=’’;
-GAMES_PLAYED=0;LIFETIME_COINS=0;LIFETIME_SATS=0;PLAYER_LEVEL=1;PLAYER_XP=0;
-// Clear localStorage so guest state doesn’t bleed in
-try{localStorage.removeItem(‘sah_v5’);localStorage.removeItem(‘sah_profile’);}catch(e){}
-syncAll();refreshAvatarUI();updateLevel(false);
-updateAccountBtn(false);hubToast(‘Signed out’);
-}
-async function authInit(){
-const sb=getSupabase();if(!sb)return;
-const {data:{session}}=await sb.auth.getSession();
-if(session?.user)await onAuthSuccess(session.user);
-sb.auth.onAuthStateChange(async(event,session)=>{
-if(event===‘SIGNED_IN’&&session?.user&&!_authUser){await onAuthSuccess(session.user);closeAuthModal();}
-if(event===‘SIGNED_OUT’){_authUser=null;updateAccountBtn(false);}
-});
-}
-</script>
