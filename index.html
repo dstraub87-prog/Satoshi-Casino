@@ -2328,24 +2328,18 @@ async function shopBuy(priceId,coins){
   hubToast('Opening checkout...');
   closeShop();
   try{
-    const sb=getSupabase();
-    // Refresh session to ensure token is valid
-    const {data,error:sessionErr}=await sb.auth.getSession();
-    if(sessionErr||!data.session)throw new Error('Session expired - please sign in again');
-    const token=data.session.access_token;
-    console.log('token prefix:',token.substring(0,20));
     const res=await fetch('https://udrymlujfjysiobfhhix.supabase.co/functions/v1/create-checkout',{
       method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkcnltbHVqZmp5c2lvYmZoaGl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5MDU3NTcsImV4cCI6MjA4ODQ4MTc1N30.9ECzc7xdfwgyImzuoiI5rLo3wfgwSGiG722q6A9J1U0'},
-      body:JSON.stringify({priceId})
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({priceId,userId:_authUser.id})
     });
     const text=await res.text();
     console.log('checkout status:',res.status,'body:',text);
     if(!res.ok)throw new Error('Server '+res.status+': '+text);
-    const data2=JSON.parse(text);
-    if(data2.error)throw new Error(data2.error);
-    if(!data2.url)throw new Error('No URL returned: '+text);
-    window.location.href=data2.url;
+    const data=JSON.parse(text);
+    if(data.error)throw new Error(data.error);
+    if(!data.url)throw new Error('No URL returned: '+text);
+    window.location.href=data.url;
   }catch(e){
     hubToast('Purchase failed: '+e.message);
     console.error('shopBuy error:',e);
@@ -5334,12 +5328,12 @@ async function authInit(){
         Google
       </button>
 
-
+```
 </div>
 <div class="auth-msg" id="auth-msg-oauth"></div>
 <button class="auth-close" onclick="closeAuthModal()">CONTINUE AS GUEST</button>
 <div class="auth-guest-note">Guest progress saves locally on this device only</div>
-
+```
 
   </div>
 </div>
