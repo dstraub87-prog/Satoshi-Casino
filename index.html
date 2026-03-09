@@ -2330,7 +2330,10 @@ async function shopBuy(priceId,coins){
   try{
     const res=await fetch('https://udrymlujfjysiobfhhix.supabase.co/functions/v1/create-checkout',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkcnltbHVqZmp5c2lvYmZoaGl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5MDU3NTcsImV4cCI6MjA4ODQ4MTc1N30.9ECzc7xdfwgyImzuoiI5rLo3wfgwSGiG722q6A9J1U0'
+      },
       body:JSON.stringify({priceId,userId:_authUser.id})
     });
     const text=await res.text();
