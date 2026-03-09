@@ -2336,8 +2336,12 @@ async function shopBuy(priceId,coins){
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
       body:JSON.stringify({priceId})
     });
-    const data=await res.json();
+    const text=await res.text();
+    console.log('checkout status:',res.status,'body:',text);
+    if(!res.ok)throw new Error('Server '+res.status+': '+text);
+    const data=JSON.parse(text);
     if(data.error)throw new Error(data.error);
+    if(!data.url)throw new Error('No URL returned: '+text);
     window.location.href=data.url;
   }catch(e){
     hubToast('Purchase failed: '+e.message);
