@@ -2052,10 +2052,11 @@ window.onerror = function(msg, src, line, col, err) {
     <div class="shop-sub">Coins are for gameplay enjoyment only · No real-world value</div>
     <div class="shop-notice">₿ (real Bitcoin) is earned FREE through streaks & milestones — never purchased, completely separate from coins.</div>
     <div class="shop-pkgs">
-      <div class="shop-pkg" onclick="shopBuy(200)"><div class="pkg-l"><span class="pkg-ico">🪙</span><div><div class="pkg-name">200 Coins</div><div class="pkg-sub">Starter · Entertainment only</div></div></div><div class="pkg-price">$0.99</div></div>
-      <div class="shop-pkg" onclick="shopBuy(600)"><div class="pkg-l"><span class="pkg-ico">🪙</span><div><div class="pkg-name">600 Coins</div><div class="pkg-sub">Popular</div></div></div><div class="pkg-price">$1.99</div></div>
-      <div class="shop-pkg" onclick="shopBuy(2000)"><div class="pkg-l"><span class="pkg-ico">💎</span><div><div class="pkg-name">2,000 Coins</div><div class="pkg-sub">Best value</div></div></div><div class="pkg-price">$4.99</div></div>
+      <div class="shop-pkg" onclick="shopBuy('price_1T8lRkFMGqaFujiFyLzD2olL',100)"><div class="pkg-l"><span class="pkg-ico">🪙</span><div><div class="pkg-name">100 Coins</div><div class="pkg-sub">Starter · Entertainment only</div></div></div><div class="pkg-price">$0.99</div></div>
+      <div class="shop-pkg" onclick="shopBuy('price_1T8lUTFMGqaFujiF79xn3U0O',500)"><div class="pkg-l"><span class="pkg-ico">🪙</span><div><div class="pkg-name">500 Coins</div><div class="pkg-sub">Popular</div></div></div><div class="pkg-price">$3.99</div></div>
+      <div class="shop-pkg" onclick="shopBuy('price_1T8lY0FMGqaFujiFbLaGJUDi',5000)"><div class="pkg-l"><span class="pkg-ico">💎</span><div><div class="pkg-name">5,000 Coins</div><div class="pkg-sub">Best value</div></div></div><div class="pkg-price">$12.99</div></div>
     </div>
+    <div class="shop-pkg" onclick="shopBuy('price_1T8lWCFMGqaFujiFZAhjMh5r',1000)"><div class="pkg-l"><span class="pkg-ico">💎</span><div><div class="pkg-name">1,000 Coins</div><div class="pkg-sub">Best value</div></div></div><div class="pkg-price">$5.99</div></div>
     <div class="shop-ad" onclick="shopWatchAd()"><span class="shop-ad-ico">📺</span><div><h4>Watch Ad → Free Coins</h4><p>Short ad earns 50 free coins</p></div><div class="shop-ad-rew">+50 🪙</div></div>
     <button class="shop-close" onclick="closeShop()">CLOSE</button>
   </div>
@@ -2322,7 +2323,27 @@ function hubToast(m){const t=document.getElementById('hub-toast');t.textContent=
 /* SHOP */
 function openShop(){document.getElementById('shop-overlay').classList.add('show');}
 function closeShop(){document.getElementById('shop-overlay').classList.remove('show');}
-function shopBuy(n){COINS+=n;syncAll();saveState();closeShop();hubToast('\u{1FA99} +'+n+' coins!');}
+async function shopBuy(priceId,coins){
+  if(!_authUser){hubToast('Sign in to purchase!');openAuthModal();return;}
+  hubToast('Opening checkout...');
+  closeShop();
+  try{
+    const sb=getSupa();
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session)throw new Error('Not signed in');
+    const res=await fetch('https://udrymlujfjysiobfhhix.supabase.co/functions/v1/create-checkout',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+      body:JSON.stringify({priceId})
+    });
+    const data=await res.json();
+    if(data.error)throw new Error(data.error);
+    window.location.href=data.url;
+  }catch(e){
+    hubToast('Purchase failed: '+e.message);
+    console.error('shopBuy error:',e);
+  }
+}
 function shopWatchAd(){closeShop();hubToast('\u{1F4FA} Watching ad...');setTimeout(()=>{earnCoins(50,'Ad Watch');hubToast('\u{1F381} +50 coins!');},1800);}
 
 /* POPUP ADS - rotate 3min/5min, fund sat pool conceptually */
@@ -3859,7 +3880,7 @@ function ballsBuyAd(){
 
 /* DOM READY - runs after all functions above are defined */
 document.addEventListener('DOMContentLoaded',function(){
-  authInit();
+  authInit();handlePurchaseReturn();
   try{startSystems();}catch(e){console.error('startSystems:',e);}
   try{buildFeed();}catch(e){console.error('buildFeed:',e);}
   try{syncAll();}catch(e){console.error('syncAll:',e);}
@@ -5242,6 +5263,27 @@ async function authSignOut(){
   try{localStorage.removeItem('sah_v5');localStorage.removeItem('sah_profile');}catch(e){}
   syncAll();refreshAvatarUI();updateLevel(false);
   updateAccountBtn(false);hubToast('Signed out');
+}
+async function handlePurchaseReturn(){
+  const params=new URLSearchParams(window.location.search);
+  const status=params.get('purchase');
+  if(!status)return;
+  window.history.replaceState({},'',window.location.pathname);
+  if(status==='success'){
+    hubToast('Purchase successful! Updating balance...');
+    setTimeout(async()=>{
+      try{
+        const sb=getSupa();
+        const {data:{user}}=await sb.auth.getUser();
+        if(user){
+          const {data}=await sb.from('players').select('coins').eq('id',user.id).single();
+          if(data&&data.coins!=null){COINS=data.coins;syncAll();saveState();hubToast('Balance updated: '+COINS.toLocaleString()+' coins!');}
+        }
+      }catch(e){console.error('Balance refresh:',e);}
+    },3000);
+  }else if(status==='cancelled'){
+    hubToast('Purchase cancelled.');
+  }
 }
 async function authInit(){
   const sb=getSupabase();if(!sb)return;
