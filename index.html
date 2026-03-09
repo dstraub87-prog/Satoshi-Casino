@@ -2328,7 +2328,7 @@ async function shopBuy(priceId,coins){
   hubToast('Opening checkout...');
   closeShop();
   try{
-    const sb=getSupa();
+    const sb=getSupabase();
     const {data:{session}}=await sb.auth.getSession();
     if(!session)throw new Error('Not signed in');
     const res=await fetch('https://udrymlujfjysiobfhhix.supabase.co/functions/v1/create-checkout',{
@@ -5273,7 +5273,7 @@ async function handlePurchaseReturn(){
     hubToast('Purchase successful! Updating balance...');
     setTimeout(async()=>{
       try{
-        const sb=getSupa();
+        const sb=getSupabase();
         const {data:{user}}=await sb.auth.getUser();
         if(user){
           const {data}=await sb.from('players').select('coins').eq('id',user.id).single();
