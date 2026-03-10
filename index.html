@@ -2354,7 +2354,7 @@ function shopWatchAd(){closeShop();_adWatchType='coins';showAdPopup();}
 
 /* POPUP ADS - rotate 3min/5min, fund sat pool conceptually */
 function scheduleNextAd(){setTimeout(showAdPopup,AD_INTERVALS[adIdx++%2]);}
-let adPopupOpen=false,_adWatchType='timed',adSkipTimer=null;
+let adPopupOpen=false,_adWatchType='timed';
 function showAdPopup(){
   if(adPopupOpen)return scheduleNextAd();
   const jp=document.getElementById('jp-overlay');
