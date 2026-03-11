@@ -1147,6 +1147,10 @@ window.onerror = function(msg, src, line, col, err) {
         </div>
         <div class="time-tiers" id="time-tiers"></div>
       </div>
+      <div style="display:flex;justify-content:center;margin:8px 0;">
+        <script type="text/javascript">atOptions = {'key' : '224430875b3c2f68327436355832e3f6','format' : 'iframe','height' : 250,'width' : 300,'params' : {}};</script>
+        <script type="text/javascript" src="https://www.highperformanceformat.com/224430875b3c2f68327436355832e3f6/invoke.js"></script>
+      </div>
     </div></div>
   </div>
 </div>
@@ -1183,6 +1187,10 @@ window.onerror = function(msg, src, line, col, err) {
         <div id="rdm-hist-list"><div class="rh-empty">No redemptions yet.</div></div>
       </div>
       <div class="rdm-legal">₿ earned through gameplay. Redeem any amount, up to ₿300/day. No purchase necessary. 18+ only. Void where prohibited. Sponsor: Sats Arcade Hub LLC, Arkansas.</div>
+      <div style="display:flex;justify-content:center;margin:8px 0;">
+        <script type="text/javascript">atOptions = {'key' : '224430875b3c2f68327436355832e3f6','format' : 'iframe','height' : 250,'width' : 300,'params' : {}};</script>
+        <script type="text/javascript" src="https://www.highperformanceformat.com/224430875b3c2f68327436355832e3f6/invoke.js"></script>
+      </div>
     </div></div>
   </div>
 </div>
@@ -1250,7 +1258,17 @@ window.onerror = function(msg, src, line, col, err) {
             <div style="font-size:.42rem;color:var(--muted);letter-spacing:1px">XP</div>
           </div>
         </div>
-        <div style="font-size:.44rem;color:rgba(255,255,255,.2);text-align:center;padding:4px 0">Multi-player leaderboard coming soon</div>
+        <!-- Top Players Leaderboard -->
+        <div style="width:100%;margin-top:4px">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:2px;color:var(--gold);text-align:center;margin-bottom:8px">🏆 TOP PLAYERS</div>
+          <div id="lb-top-list" style="display:flex;flex-direction:column;gap:6px">
+            <div style="text-align:center;color:var(--muted);font-size:.5rem;padding:12px">Loading leaderboard...</div>
+          </div>
+        </div>
+      <div style="display:flex;justify-content:center;margin:8px 0;">
+        <script type="text/javascript">atOptions = {'key' : '224430875b3c2f68327436355832e3f6','format' : 'iframe','height' : 250,'width' : 300,'params' : {}};</script>
+        <script type="text/javascript" src="https://www.highperformanceformat.com/224430875b3c2f68327436355832e3f6/invoke.js"></script>
+      </div>
       </div>
     </div>
   </div>
@@ -5119,6 +5137,48 @@ function lbBuild(){
     'lb-stat-xp':xp.toLocaleString()
   };
   Object.entries(fields).forEach(([id,val])=>{const e=document.getElementById(id);if(e)e.textContent=val;});
+  lbFetchTop();
+}
+
+async function lbFetchTop(){
+  const list=document.getElementById('lb-top-list');
+  if(!list)return;
+  list.innerHTML='<div style="text-align:center;color:var(--muted);font-size:.5rem;padding:12px">Loading...</div>';
+  try{
+    const sb=getSupabase();
+    if(!sb)throw new Error('no supabase');
+    const {data,error}=await sb.from('profiles')
+      .select('display_name,avatar,player_level,lifetime_sats,lifetime_coins,games_played,streak')
+      .order('lifetime_sats',{ascending:false})
+      .limit(10);
+    if(error)throw error;
+    if(!data||data.length===0){
+      list.innerHTML='<div style="text-align:center;color:var(--muted);font-size:.5rem;padding:12px">No players yet — be the first!</div>';
+      return;
+    }
+    const medals=['🥇','🥈','🥉'];
+    const myName=PLAYER_NAME;
+    list.innerHTML=data.map((p,i)=>{
+      const isMe=p.display_name===myName;
+      const medal=medals[i]||(i+1+'.');
+      const lvl=p.player_level||1;
+      const rank=getRank(lvl);
+      return `<div style="display:flex;align-items:center;gap:10px;background:${isMe?'rgba(247,147,26,.12)':'rgba(0,0,0,.25)'};border:1px solid ${isMe?'rgba(247,147,26,.4)':'rgba(255,255,255,.06)'};border-radius:10px;padding:10px 12px;">
+        <div style="font-size:1.1rem;flex-shrink:0;width:24px;text-align:center">${medal}</div>
+        <div style="font-size:1.4rem;flex-shrink:0">${p.avatar||'🎮'}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:.85rem;letter-spacing:1px;color:${isMe?'var(--gold)':'var(--text)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.display_name||'Anon'}${isMe?' (You)':''}</div>
+          <div style="font-size:.44rem;color:var(--muted)">${rank.icon} LV${lvl} · 🎮${(p.games_played||0).toLocaleString()} · 🔥${p.streak||0}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:.9rem;color:var(--btc)">₿${(p.lifetime_sats||0).toLocaleString()}</div>
+          <div style="font-size:.42rem;color:var(--muted)">${(p.lifetime_coins||0).toLocaleString()} 🪙</div>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){
+    list.innerHTML='<div style="text-align:center;color:var(--muted);font-size:.5rem;padding:12px">Could not load leaderboard.</div>';
+  }
 }
 
 
