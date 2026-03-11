@@ -1,5 +1,5 @@
 # Sats Arcade Hub
-Free play casino game with Satoshi rewards.
+Free play casino simulator game with Satoshi rewards.
 Testing version.
 Constant updates.
-Real ads/sats not yet incorporated 
+Real sats not yet incorporated 
