@@ -5185,7 +5185,7 @@ async function lbFetchTop(){
         <div style="font-size:1.1rem;flex-shrink:0;width:24px;text-align:center">${medal}</div>
         <div style="font-size:1.4rem;flex-shrink:0">${p.avatar||'🎮'}</div>
         <div style="flex:1;min-width:0">
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:.85rem;letter-spacing:1px;color:${isMe?'var(--gold)':'var(--text)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.display_name||'Anon'}${isMe?' (You)':''}</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:.85rem;letter-spacing:1px;color:${isMe?'var(--gold)':'var(--text)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${/^tg_\d+$/.test(p.display_name||'')?'\u26A1 TG Player':(p.display_name||'Anon')}${isMe?' (You)':''}</div>
           <div style="font-size:.44rem;color:var(--muted)">${rank.icon} LV${lvl} · 🎮${(p.games_played||0).toLocaleString()} · 🔥${p.streak||0}</div>
         </div>
         <div style="text-align:right;flex-shrink:0">
