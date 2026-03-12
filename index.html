@@ -3928,17 +3928,8 @@ function ballsBuyAd(){
 }
 
 /* DOM READY - runs after all functions above are defined */
-document.addEventListener('DOMContentLoaded',function(){
-  authInit();handlePurchaseReturn();
-  try{startSystems();}catch(e){console.error('startSystems:',e);}
-  try{buildFeed();}catch(e){console.error('buildFeed:',e);}
-  try{syncAll();}catch(e){console.error('syncAll:',e);}
-  try{renderStreakHub();}catch(e){console.error('renderStreakHub:',e);}
-  try{renderRedeemHist();}catch(e){console.error('renderRedeemHist:',e);}
-  try{updateLevel(false);}catch(e){console.error('updateLevel:',e);}
-  try{refreshAvatarUI();}catch(e){console.error('refreshAvatarUI:',e);}
-  var ps=document.getElementById('profile-sheet');
-  if(ps)ps.addEventListener('click',function(e){if(e.target===this)closeProfile();});
+document.addEventListener('DOMContentLoaded',async function(){
+  // Handle age gate / TG bypass FIRST before anything renders
   try{
     if(window.isTelegram()){
       var ag=document.getElementById('age-gate');if(ag)ag.style.display='none';
@@ -3950,6 +3941,18 @@ document.addEventListener('DOMContentLoaded',function(){
       if(!localStorage.getItem('sah_demo_ok')){var dd=document.getElementById('demo-disclaimer');if(dd)dd.style.display='flex';}
     }
   }catch(e){}
+  // Await auth BEFORE rendering so Supabase data is loaded first
+  try{await authInit();}catch(e){console.error('authInit:',e);}
+  handlePurchaseReturn();
+  try{startSystems();}catch(e){console.error('startSystems:',e);}
+  try{buildFeed();}catch(e){console.error('buildFeed:',e);}
+  try{syncAll();}catch(e){console.error('syncAll:',e);}
+  try{renderStreakHub();}catch(e){console.error('renderStreakHub:',e);}
+  try{renderRedeemHist();}catch(e){console.error('renderRedeemHist:',e);}
+  try{updateLevel(false);}catch(e){console.error('updateLevel:',e);}
+  try{refreshAvatarUI();}catch(e){console.error('refreshAvatarUI:',e);}
+  var ps=document.getElementById('profile-sheet');
+  if(ps)ps.addEventListener('click',function(e){if(e.target===this)closeProfile();});
 });
 
 
