@@ -947,8 +947,9 @@ window["GD_OPTIONS"] = {
     }
   }
 };
-// Load SDK after GD_OPTIONS is set
+// Only load GD SDK when running inside an iframe (GD/embed context)
 (function(){
+  if(window.self===window.top)return; // not in iframe - skip GD SDK entirely
   var s=document.createElement('script');
   s.src='https://html5.api.gamedistribution.com/main.min.js';
   s.async=true;
