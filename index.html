@@ -8,6 +8,7 @@
 <script src="https://environmenttalentrabble.com/e1/74/3a/e1743a52ff78f4c3e2ee530ead8c1425.js"></script>
 <title>⚡ Sats Arcade Hub</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Audiowide&family=Space+Mono:wght@400;700&family=Bungee&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 :root{--btc:#F7931A;--btcg:rgba(247,147,26,.3);--gold:#FFD700;--cyan:#00E5FF;--pink:#FF2D78;--purple:#A855F7;--green:#39FF14;--bg:#07080F;--bg2:#0D0E1A;--bg3:#131525;--card:#10111E;--border:rgba(247,147,26,.16);--text:#F0E8D8;--muted:#4A4465;}
@@ -2242,6 +2243,42 @@ window.onerror = function(msg, src, line, col, err) {
     if(_rp)sessionStorage.setItem('sah_ref',_rp);
   }catch(e){}
 })();
+
+// === SECURITY HELPERS ===
+function sanitizeHTML(str){
+  if(!str)return '';
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#x27;')
+    .replace(/\//g,'&#x2F;')
+    .slice(0,40); // hard cap display names at 40 chars
+}
+function sanitizeName(str){
+  // Strip anything that's not alphanumeric, spaces, underscores, hyphens, emoji
+  if(!str)return 'Anon';
+  return String(str).replace(/[<>&"'\/\\]/g,'').slice(0,30).trim()||'Anon';
+}
+
+// === ACCOUNT CREATION RATE LIMIT (device-level) ===
+function checkSignupRateLimit(){
+  try{
+    const key='sah_signups';
+    const now=Date.now();
+    const data=JSON.parse(localStorage.getItem(key)||'[]');
+    // Keep only attempts in last 24 hours
+    const recent=data.filter(t=>now-t<86400000);
+    if(recent.length>=3){
+      return false; // max 3 accounts per device per day
+    }
+    recent.push(now);
+    localStorage.setItem(key,JSON.stringify(recent));
+    return true;
+  }catch(e){return true;}
+}
+
 let COINS=1000, SATS=0, JACKPOT=1247;
 let STREAK=0, LAST_CLAIM='', CLAIMED_TODAY=false;
 function _todayISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -2423,7 +2460,7 @@ function legOpen(t){navTo('legal');legTab(t);}
 /* FEED */
 const BASE_FEED=[{u:'Anon7821',g:'Plinko',a:'+420'},{u:'Satoshi99',g:'Slots',a:'+1000'},{u:'BTCfan',g:'Crash',a:'+380'},{u:'Anon2241',g:'Slots',a:'+2500'},{u:'Hodler42',g:'Plinko',a:'+800'},{u:'StackSats',g:'Keno',a:'+700'},{u:'CryptoKid',g:'Snake',a:'+25'}];
 let extraFeed=[];
-function buildFeed(){const all=[...extraFeed,...BASE_FEED];const d=[...all,...all];document.getElementById('wfeed').innerHTML=d.map(w=>`<span class="wfi">${w.u} won <b>${w.a}\u{1FA99}</b> on ${w.g} \u00B7</span>`).join('');}
+function buildFeed(){const all=[...extraFeed,...BASE_FEED];const d=[...all,...all];document.getElementById('wfeed').innerHTML=d.map(w=>`<span class="wfi">${sanitizeHTML(w.u)} won <b>${sanitizeHTML(w.a)}\u{1FA99}</b> on ${sanitizeHTML(w.g)} \u00B7</span>`).join('');}
 function addFeedWin(g,n){extraFeed.unshift({u:'You',g,a:'+'+n});if(extraFeed.length>4)extraFeed.pop();buildFeed();}
 
 /* AGE GATE */
@@ -3994,9 +4031,9 @@ function toggleNameEdit(){
 function saveName(){
   const v=document.getElementById('ps-name-input').value.trim();
   if(v){
-    PLAYER_NAME=v;
+    PLAYER_NAME=sanitizeName(v);
     saveProfileState();
-    document.getElementById('ps-name-display').textContent=v;
+    document.getElementById('ps-name-display').textContent=PLAYER_NAME;
     // Sync new name to Supabase immediately
     debouncedSyncToServer();
   }
@@ -5300,7 +5337,7 @@ async function lbFetchTop(){
         <div style="font-size:1.1rem;flex-shrink:0;width:24px;text-align:center">${medal}</div>
         <div style="font-size:1.4rem;flex-shrink:0">${p.avatar||'🎮'}</div>
         <div style="flex:1;min-width:0">
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:.85rem;letter-spacing:1px;color:${isMe?'var(--gold)':'var(--text)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.display_name||'Anon'}${isMe?' (You)':''}</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:.85rem;letter-spacing:1px;color:${isMe?'var(--gold)':'var(--text)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${sanitizeHTML(p.display_name)||'Anon'}${isMe?' (You)':''}</div>
           <div style="font-size:.44rem;color:var(--muted)">${rank.icon} LV${lvl} · 🎮${(p.games_played||0).toLocaleString()} · 🔥${p.streak||0}</div>
         </div>
         <div style="text-align:right;flex-shrink:0">
@@ -5361,6 +5398,17 @@ async function authSignIn(){
   await onAuthSuccess(data.user);closeAuthModal();
 }
 async function authSignUp(){
+  // Device rate limit
+  if(!checkSignupRateLimit()){
+    authMsg('auth-msg-up','Too many accounts created today. Try again tomorrow.',true);
+    return;
+  }
+  // Cloudflare Turnstile check
+  const tsResponse=document.querySelector('[name="cf-turnstile-response"]')?.value;
+  if(!tsResponse){
+    authMsg('auth-msg-up','Please complete the security check.',true);
+    return;
+  }
   const sb=getSupabase();if(!sb)return;
   const email=document.getElementById('auth-email-up').value.trim();
   const pass=document.getElementById('auth-pass-up').value;
@@ -5418,7 +5466,7 @@ async function onAuthSuccess(user,displayName){
     COINS=existing.coins??1000;SATS=existing.sats??0;
     LIFETIME_COINS=existing.lifetime_coins??0;LIFETIME_SATS=existing.lifetime_sats??0;
     GAMES_PLAYED=existing.games_played??0;STREAK=existing.streak??0;
-    LAST_CLAIM=existing.last_claim??'';PLAYER_NAME=existing.display_name??name;
+    LAST_CLAIM=existing.last_claim??'';PLAYER_NAME=sanitizeName(existing.display_name??name);
     PLAYER_AVATAR=existing.avatar??'&#x1F3AE;';PLAYER_LEVEL=existing.player_level??1;
     try{WEEKLY_CLAIMS=existing.weekly_claims?JSON.parse(existing.weekly_claims):{};}catch(e){WEEKLY_CLAIMS={};}
     try{MONTHLY_CLAIMS=existing.monthly_claims?JSON.parse(existing.monthly_claims):{};}catch(e){MONTHLY_CLAIMS={};}
@@ -5551,7 +5599,7 @@ async function authInit(){
         if(LAST_CLAIM){const _sc=_applyStreakState(LAST_CLAIM,STREAK);STREAK=_sc.streak;CLAIMED_TODAY=_sc.claimedToday;}
         else{CLAIMED_TODAY=false;}
         // Use saved display_name from Supabase; fallback to Telegram name
-        if(existing.display_name&&!existing.display_name.startsWith('tg_'))PLAYER_NAME=existing.display_name;
+        if(existing.display_name&&!existing.display_name.startsWith('tg_'))PLAYER_NAME=sanitizeName(existing.display_name);
         _authUser={id:existing.id,email:tgId};_tgId=tgId;
         syncAll();saveState();hubToast('Welcome back, '+PLAYER_NAME+' ⚡');
       } else {
@@ -5622,7 +5670,8 @@ async function authInit(){
       <input class="auth-input" id="auth-pass-up" type="password" placeholder="Password (min 6 chars)" autocomplete="new-password"/>
       <input class="auth-input" id="auth-name-up" type="text" placeholder="Display name" maxlength="20"/>
       <div class="auth-msg" id="auth-msg-up"></div>
-      <button class="auth-btn" id="auth-signup-btn" onclick="authSignUp()">CREATE ACCOUNT</button>
+      <div class="cf-turnstile" data-sitekey="0x4AAAAAACp77a5bQIiumGut" data-theme="dark" id="cf-turnstile-widget"></div>
+<button class="auth-btn" id="auth-signup-btn" onclick="authSignUp()">CREATE ACCOUNT</button>
     </div>
     <div class="auth-divider"><span>OR CONTINUE WITH</span></div>
     <div class="auth-oauth">
