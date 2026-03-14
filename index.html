@@ -2393,7 +2393,6 @@ const PLINKO={balls:5,score:0,multi:1,activeDrops:0,history:[],bonusActive:false
 function loadState(){
   try{
     const s=JSON.parse(localStorage.getItem('sah_v5')||'{}');
-    console.log('[LOAD] localStorage: streak='+s.st+' last_claim='+s.lc+' balls='+s.pb);
     if(s.c!=null)COINS=s.c;
     if(s.s!=null)SATS=s.s;
     if(s.j)JACKPOT=s.j;
@@ -2747,10 +2746,9 @@ function claimStreak(){
   if(r.sats>0)awardSats(r.sats,'streak');
   const cycleDay=idx+1;
   STREAK=STREAK+1;CLAIMED_TODAY=true;LAST_CLAIM=_todayISO();
-  console.log('[STREAK] Claimed. STREAK='+STREAK+' LAST_CLAIM='+LAST_CLAIM);
   saveState();renderStreakHub();renderStreakRewards();
   // Sync immediately
-  syncToServer().then(()=>console.log('[STREAK] Sync complete. DB should have last_claim='+LAST_CLAIM));
+  syncToServer();
   const isWeek7=cycleDay===7;
   showRewardPopup('\u{1F525}',isWeek7?'Week Complete! \u{1F525}':'Day '+cycleDay+' Streak!',[{ico:'\u{1FA99}',val:'+'+r.coins+' Coins'},{ico:'\u20BF',val:'\u20BF'+r.sats}],'var(--btc)');
   confetti();
@@ -2876,7 +2874,7 @@ function startSystems(){
   },30000);
   setInterval(()=>{JACKPOT+=Math.floor(Math.random()*3)+1;if(JACKPOT>99999)JACKPOT=500;document.getElementById('global-jackpot').textContent=JACKPOT.toLocaleString();},4000);
   // Sync to server every 60 seconds regardless of activity
-  setInterval(()=>{ if(_authUser){console.log('[Sync] periodic');syncToServer();} },60000);
+  setInterval(()=>{ if(_authUser) syncToServer(); },60000);
   // Final sync before tab closes
   window.addEventListener('beforeunload',()=>{ if(_authUser) syncToServer(); });
 }
@@ -5589,7 +5587,6 @@ async function onAuthSuccess(user,displayName){
     }catch(e){console.error('[Ref] award error:',e);}
     hubToast('Account created! Progress synced &#x2713;');
   } else {
-    console.log('[AUTH] Supabase: streak='+existing.streak+' last_claim='+existing.last_claim+' balls='+existing.plinko_balls+' coins='+existing.coins);
     COINS=existing.coins??1000;SATS=existing.sats??0;
     LIFETIME_COINS=existing.lifetime_coins??0;LIFETIME_SATS=existing.lifetime_sats??0;
     GAMES_PLAYED=existing.games_played??0;STREAK=existing.streak??0;
@@ -5617,11 +5614,10 @@ async function syncToServer(){
     plinko_balls:Math.min(PLINKO.balls,200),
     player_level:PLAYER_LEVEL||1,player_xp:PLAYER_XP||0,
     avatar:PLAYER_AVATAR,display_name:PLAYER_NAME,
-    ...(_tgId?{tg_id:_tgId}:{}),
+    tg_id:_tgId||null,
     weekly_claims:JSON.stringify(WEEKLY_CLAIMS),
     monthly_claims:JSON.stringify(MONTHLY_CLAIMS)
   };
-  console.log('[SYNC] Sending: streak='+payload.streak+' last_claim='+payload.last_claim+' balls='+payload.plinko_balls+' tgId='+payload.tg_id);
   const {data:syncResult,error}=await sb.rpc('secure_profile_update',{
     p_id:payload.id, p_coins:payload.coins, p_sats:payload.sats,
     p_lifetime_coins:payload.lifetime_coins, p_lifetime_sats:payload.lifetime_sats,
