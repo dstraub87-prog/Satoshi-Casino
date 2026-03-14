@@ -2599,7 +2599,21 @@ const SFX = {
   pongHit:()=>{ if(!_sfxOn)return; _tone(300+Math.random()*200,'square',0.04,0.3); },
   pongWall:()=>{ if(!_sfxOn)return; _tone(200,'square',0.03,0.2); },
   pongScore:()=>{ if(!_sfxOn)return; _tone(150,'sawtooth',0.2,0.4); },
-  scratch:()=>{ if(!_sfxOn)return; _noise(0.08,0.3,2000,6000,0); },
+  scratch:()=>{
+    if(!_sfxOn)return;
+    // Throttle: don't fire more than once every 80ms (finger drag fires constantly)
+    const now=Date.now();
+    if(SFX._lastScratch&&now-SFX._lastScratch<80)return;
+    SFX._lastScratch=now;
+    _noise(0.12,0.25,800,3000,0);
+  },
+  // Scratch all - single longer sweep sound
+  scratchAll:()=>{
+    if(!_sfxOn)return;
+    _noise(0.15,0.35,600,2500,0);
+    _noise(0.15,0.3,700,2800,0.12);
+    _noise(0.12,0.25,800,3000,0.26);
+  },
   cardFlip:()=>{ if(!_sfxOn)return; _noise(0.07,0.3,500,1500,0); _tone(500,'sine',0.05,0.1,0.05); },
   beep:()=>{ if(!_sfxOn)return; _tone(880,'sine',0.08,0.4); },
   crashTick:(mult)=>{
@@ -3375,7 +3389,8 @@ function _pTickBall(b){
       b.vx=Math.cos(a)*sp*0.76+(Math.random()-0.5)*1.2;
       b.vy=Math.abs(Math.sin(a)*sp*0.76);
       p.hit=8;
-      if(!b._bounceCount||b._bounceCount<20){SFX.bounce();b._bounceCount=(b._bounceCount||0)+1;}
+      // One sound per peg hit - track last peg index to avoid retriggering same peg
+      if(b._lastPeg!==p){SFX.bounce();b._lastPeg=p;}
     }
   }
   b.trail.push({x:b.x,y:b.y});
@@ -5575,7 +5590,7 @@ function scCompleteCell(i){
 
 function scScratchAll(){
   if(scDone)return;
-  SFX.scratch();SFX.scratch();
+  SFX.scratchAll();
   scBoard.forEach((_,i)=>{
     if(scScratched[i])return;
     const can=scCanvases[i];if(!can)return;
